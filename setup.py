@@ -11,4 +11,5 @@ setup(
         [console_scripts]
         sorcerun=sorcerun_package.cli:hello
     """,
+    long_description="Sorcerun long description",
 )
