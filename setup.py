@@ -6,10 +6,12 @@ setup(
     packages=find_packages(),
     install_requires=[
         "click",
+        "sacred @ git+https://github.com/rajatvd/sacred.git",
+        "pymongo",
     ],
     entry_points="""
         [console_scripts]
-        sorcerun=sorcerun_package.cli:hello
+        sorcerun=sorcerun_package.cli:sorcerun
     """,
     long_description="Sorcerun long description",
 )
