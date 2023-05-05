@@ -12,6 +12,7 @@ def mongodb_server(db_path, conf_path):
     if not os.path.exists(db_path):
         os.makedirs(db_path)
 
+    click.echo(f"Starting MongoD server using config at {conf_path}")
     mongodb_process = subprocess.Popen(
         ["mongod", "--config", conf_path],
         stdout=subprocess.DEVNULL,  # Suppress output
@@ -20,7 +21,7 @@ def mongodb_server(db_path, conf_path):
     try:
         yield
     finally:
-        print("Terimnating mongod server...")
+        click.echo(f"Terimnating MongoD server that used config at {conf_path}\n")
         mongodb_process.terminate()
         mongodb_process.wait()
 
@@ -58,6 +59,7 @@ def init_mongodb(db_path, db_name, username, password):
     create_mongod_conf(db_path, conf_path_noauth, auth=False)
 
     with mongodb_server(db_path, conf_path_noauth):
+        click.echo("Creating admin user in mongodb")
         client = MongoClient("localhost", 27017)
         db = client["admin"]
         db.command("ping")
@@ -68,53 +70,19 @@ def init_mongodb(db_path, db_name, username, password):
             roles=[{"role": "userAdminAnyDatabase", "db": "admin"}],
         )
 
+    # remove the conf_file with no auth
+
     # --- create specific user with auth for database ---
     conf_path = os.path.join(db_path, "mongod.conf")
     create_mongod_conf(db_path, conf_path)
 
-
-@click.group()
-def sorcerun():
-    pass
-
-
-@sorcerun.group()
-def mongo():
-    pass
-
-
-@mongo.command()
-def init():
-    click.echo("Initializing a new MongoDB database locally...")
-
-    # 1. Ask for path to store MongoDB data
-    db_path = click.prompt(
-        "Please enter the path where you'd like to store the MongoDB database files"
-    )
-
     with mongodb_server(db_path, conf_path):
-        # 3. Ask the user for a database name
-        db_name = click.prompt("Please enter a name for the new MongoDB database")
-
-        # 4. Create a database in the above server using pymongo
-        click.echo(f"Creating a new MongoDB database named {db_name}...")
+        click.echo(f"Creating user {username} with access to database {db_name}")
+        # client authed with as admin
         client = MongoClient("mongodb://admin:admin@localhost:27017/?authSource=admin")
-
         db = client[db_name]
         db.command("ping")
 
-        click.echo(client.list_database_names())
-
-        click.echo(f"MongoDB database {db_name} has been created at {db_path}.")
-
-        # 6. Ask the user for a new username and password
-        username = click.prompt("Please enter a new username for the MongoDB database")
-        password = click.prompt(
-            "Please enter a new password for the MongoDB database", hide_input=True
-        )
-
-        # 7. Create a new user with access to the database
-        click.echo(f"Creating a new user for the {db_name} database...")
         client.admin.command(
             "createUser",
             username,
@@ -132,12 +100,61 @@ def init():
                 "authSource": "admin",
             },
             "db_name": db_name,
+            "db_path": db_path,
+            "conf_path": conf_path,
         }
 
         with open("auth.json", "w") as auth_file:
             json.dump(auth_data, auth_file, indent=4)
 
-        click.echo("Auth.json file has been created with the provided credentials.")
+
+@click.group()
+def sorcerun():
+    pass
+
+
+@sorcerun.group()
+def mongo():
+    pass
+
+
+@mongo.command()
+def init():
+    db_path = click.prompt(
+        "Please enter the path where you'd like to store the MongoDB database files"
+    )
+    db_name = click.prompt("Enter the name of the database to store runs")
+    username = click.prompt("Please enter a new username for the MongoDB database")
+    password = click.prompt(
+        "Please enter a new password for the MongoDB database", hide_input=True
+    )
+
+    click.echo("\n")
+
+    init_mongodb(
+        db_path=db_path,
+        db_name=db_name,
+        username=username,
+        password=password,
+    )
+
+    click.echo(
+        "Initialization complete. Use `sorcerun mongo start` to start the configured mongodb server."
+    )
+
+
+@mongo.command()
+def start():
+    with open("auth.json", "r") as f:
+        authjson = json.loads(f.read())
+        db_path = authjson["db_path"]
+        conf_path = authjson["conf_path"]
+
+    print(db_path)
+    print(conf_path)
+    with mongodb_server(db_path, conf_path):
+        while True:
+            pass
 
 
 if __name__ == "__main__":
