@@ -8,10 +8,7 @@ import contextlib
 
 
 @contextlib.contextmanager
-def mongodb_server(db_path, conf_path):
-    if not os.path.exists(db_path):
-        os.makedirs(db_path)
-
+def mongodb_server(conf_path):
     click.echo(f"Starting MongoD server using config at {conf_path}")
     mongodb_process = subprocess.Popen(
         ["mongod", "--config", conf_path],
@@ -58,7 +55,7 @@ def init_mongodb(db_path, db_name, username, password):
     conf_path_noauth = os.path.join(db_path, "mongod_noauth.conf")
     create_mongod_conf(db_path, conf_path_noauth, auth=False)
 
-    with mongodb_server(db_path, conf_path_noauth):
+    with mongodb_server(conf_path_noauth):
         click.echo("Creating admin user in mongodb")
         client = MongoClient("localhost", 27017)
         db = client["admin"]
@@ -76,7 +73,7 @@ def init_mongodb(db_path, db_name, username, password):
     conf_path = os.path.join(db_path, "mongod.conf")
     create_mongod_conf(db_path, conf_path)
 
-    with mongodb_server(db_path, conf_path):
+    with mongodb_server(conf_path):
         click.echo(f"Creating user {username} with access to database {db_name}")
         # client authed with as admin
         client = MongoClient("mongodb://admin:admin@localhost:27017/?authSource=admin")
@@ -147,12 +144,11 @@ def init():
 def start():
     with open("auth.json", "r") as f:
         authjson = json.loads(f.read())
-        db_path = authjson["db_path"]
         conf_path = authjson["conf_path"]
 
-    print(db_path)
     print(conf_path)
-    with mongodb_server(db_path, conf_path):
+    with mongodb_server(conf_path):
+        # TODO pipe log outputs to stdout or something nicely
         while True:
             pass
 
