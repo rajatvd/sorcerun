@@ -8,6 +8,7 @@ setup(
         "click",
         "sacred @ git+https://github.com/rajatvd/sacred.git",
         "pymongo",
+        "pyyaml",
     ],
     entry_points="""
         [console_scripts]
