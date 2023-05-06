@@ -1,13 +1,29 @@
 import click
 import subprocess
-import json
-from .mongodb_utils import mongodb_server, init_mongodb
+import json, yaml
 from contextlib import ExitStack
+from .mongodb_utils import mongodb_server, init_mongodb
+from .sacred_utils import load_adapter_function, run_sacred_experiment
 
 
 @click.group()
 def sorcerun():
     pass
+
+
+@sorcerun.command()
+@click.argument("python_file", type=click.Path(exists=True, dir_okay=False))
+@click.argument("config_file", type=click.Path(exists=True, dir_okay=False))
+def run(python_file, config_file):
+    # Load the adapter function from the provided Python file
+    adapter_func = load_adapter_function(python_file)
+
+    # Load the config from the provided YAML file
+    with open(config_file, "r") as file:
+        config = yaml.safe_load(file)
+
+    # Run the Sacred experiment with the provided adapter function and config
+    run_sacred_experiment(adapter_func, config)
 
 
 @sorcerun.group()
