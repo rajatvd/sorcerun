@@ -4,6 +4,7 @@ import contextlib
 import subprocess
 import click
 from pymongo import MongoClient
+from .globals import AUTH_FILE
 
 
 @contextlib.contextmanager
@@ -100,5 +101,5 @@ def init_mongodb(db_path, db_name, username, password):
             "conf_path": conf_path,
         }
 
-        with open("auth.json", "w") as auth_file:
+        with open(AUTH_FILE, "w") as auth_file:
             json.dump(auth_data, auth_file, indent=4)

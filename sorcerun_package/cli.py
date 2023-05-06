@@ -4,6 +4,7 @@ import json, yaml
 from contextlib import ExitStack
 from .mongodb_utils import mongodb_server, init_mongodb
 from .sacred_utils import load_adapter_function, run_sacred_experiment
+from .globals import AUTH_FILE
 
 
 @click.group()
@@ -58,7 +59,7 @@ def init():
 
 @mongo.command()
 def start():
-    with open("auth.json", "r") as f:
+    with open(AUTH_FILE, "r") as f:
         authjson = json.loads(f.read())
         conf_path = authjson["conf_path"]
 
@@ -72,10 +73,10 @@ def start():
 @sorcerun.command()
 def omniboard():
     """
-    Run Omniboard using the details saved in auth.json.
+    Run Omniboard using the details saved in {AUTH_FILE}.
     """
     try:
-        with open("auth.json", "r") as f:
+        with open(AUTH_FILE, "r") as f:
             auth_data = json.load(f)
 
         mongodb_uri = f'mongodb://{auth_data["client_kwargs"]["username"]}:{auth_data["client_kwargs"]["password"]}@127.0.0.1:27017/{auth_data["db_name"]}?authSource=admin'
@@ -87,7 +88,9 @@ def omniboard():
             omniboard_process.wait()
 
     except (FileNotFoundError, json.JSONDecodeError):
-        click.echo("Error: auth.json file not found or is not a valid JSON file.")
+        click.echo(
+            f"Error: {AUTH_FILE} file not found or is not a valid JSON file. Run `sorcerun mongo init` to initialize this json file."
+        )
     except subprocess.CalledProcessError as e:
         click.echo(f"Error occurred while running Omniboard: {e}")
 

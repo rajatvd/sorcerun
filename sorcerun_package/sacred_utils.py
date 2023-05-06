@@ -2,6 +2,7 @@ from sacred import Experiment
 from sacred.observers import MongoObserver
 import importlib
 import json
+from .globals import AUTH_FILE
 
 
 def load_adapter_function(python_file):
@@ -15,7 +16,7 @@ def load_adapter_function(python_file):
 def run_sacred_experiment(adapter_func, config):
     ex = Experiment("sorcerun_experiment")
 
-    with open("auth.json", "r") as f:
+    with open(AUTH_FILE, "r") as f:
         auth_data = json.load(f)
 
     observer = MongoObserver(
