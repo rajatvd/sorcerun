@@ -14,7 +14,8 @@ def load_adapter_function(python_file):
 
 
 def run_sacred_experiment(adapter_func, config):
-    ex = Experiment("sorcerun_experiment")
+    experiment_name = getattr(adapter_func, "experiment_name", "sorcerun_experiment")
+    ex = Experiment(experiment_name)
 
     with open(AUTH_FILE, "r") as f:
         auth_data = json.load(f)
@@ -31,6 +32,6 @@ def run_sacred_experiment(adapter_func, config):
     @ex.main
     def run_experiment(_config, _run):
         result = adapter_func(_config, _run)
-        _run.result = result
+        return result
 
     ex.run()

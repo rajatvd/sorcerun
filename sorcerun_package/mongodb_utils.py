@@ -4,7 +4,7 @@ import contextlib
 import subprocess
 import click
 from pymongo import MongoClient
-from .globals import AUTH_FILE
+from .globals import AUTH_FILE, MONGOD_PORT, MONGOD_HOST
 
 
 @contextlib.contextmanager
@@ -29,8 +29,8 @@ def create_mongod_conf(db_path, conf_path, auth=True):
             "dbPath": db_path,
         },
         "net": {
-            "bindIp": "127.0.0.1",
-            "port": 27017,
+            "bindIp": MONGOD_HOST,
+            "port": MONGOD_PORT,
         },
         "security": {
             "authorization": "enabled" if auth else "disabled",
@@ -57,7 +57,7 @@ def init_mongodb(db_path, db_name, username, password):
 
     with mongodb_server(conf_path_noauth):
         click.echo("Creating admin user in mongodb")
-        client = MongoClient("localhost", 27017)
+        client = MongoClient(MONGOD_HOST, MONGOD_PORT)
         db = client["admin"]
         db.command("ping")
         client.admin.command(
@@ -76,7 +76,9 @@ def init_mongodb(db_path, db_name, username, password):
     with mongodb_server(conf_path):
         click.echo(f"Creating user {username} with access to database {db_name}")
         # client authed with as admin
-        client = MongoClient("mongodb://admin:admin@localhost:27017/?authSource=admin")
+        client = MongoClient(
+            f"mongodb://admin:admin@{MONGOD_HOST}:{MONGOD_PORT}/?authSource=admin"
+        )
         db = client[db_name]
         db.command("ping")
 
@@ -90,8 +92,8 @@ def init_mongodb(db_path, db_name, username, password):
         # 8. Create auth.json file
         auth_data = {
             "client_kwargs": {
-                "host": "localhost",
-                "port": 27017,
+                "host": MONGOD_HOST,
+                "port": MONGOD_PORT,
                 "username": username,
                 "password": password,
                 "authSource": "admin",
