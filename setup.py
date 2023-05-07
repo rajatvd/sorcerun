@@ -6,7 +6,8 @@ setup(
     packages=find_packages(),
     install_requires=[
         "click",
-        "sacred @ git+https://github.com/rajatvd/sacred.git",
+        # "sacred @ git+https://github.com/rajatvd/sacred.git",
+        "sacred==0.8.4",
         "pymongo",
         "pyyaml",
     ],
