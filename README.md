@@ -4,8 +4,6 @@ Sorcerun is a command-line interface (CLI) designed to streamline the execution 
 
 TODO: add simple example
 
-Regenerate response
-
 # TODO
 
 -   [ ] Utilities to forward ports via ssh
