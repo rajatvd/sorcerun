@@ -13,11 +13,11 @@ def load_adapter_function(python_file):
     return adapter_func
 
 
-def run_sacred_experiment(adapter_func, config):
+def run_sacred_experiment(adapter_func, config, auth_path=AUTH_FILE):
     experiment_name = getattr(adapter_func, "experiment_name", "sorcerun_experiment")
     ex = Experiment(experiment_name)
 
-    with open(AUTH_FILE, "r") as f:
+    with open(auth_path, "r") as f:
         auth_data = json.load(f)
 
     observer = MongoObserver(

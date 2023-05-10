@@ -15,7 +15,8 @@ def sorcerun():
 @sorcerun.command()
 @click.argument("python_file", type=click.Path(exists=True, dir_okay=False))
 @click.argument("config_file", type=click.Path(exists=True, dir_okay=False))
-def run(python_file, config_file):
+@click.option("--auth_path", default=AUTH_FILE, help="Path to sorcerun_auth.json file.")
+def run(python_file, config_file, auth_path):
     # Load the adapter function from the provided Python file
     adapter_func = load_adapter_function(python_file)
 
@@ -24,7 +25,7 @@ def run(python_file, config_file):
         config = yaml.safe_load(file)
 
     # Run the Sacred experiment with the provided adapter function and config
-    run_sacred_experiment(adapter_func, config)
+    run_sacred_experiment(adapter_func, config, auth_path)
 
 
 @sorcerun.group()
