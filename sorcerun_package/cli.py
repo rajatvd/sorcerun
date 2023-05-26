@@ -1,4 +1,6 @@
 import click
+from sklearn.model_selection import ParameterGrid
+import os
 import subprocess
 import json, yaml
 from contextlib import ExitStack
@@ -26,6 +28,31 @@ def run(python_file, config_file, auth_path):
 
     # Run the Sacred experiment with the provided adapter function and config
     run_sacred_experiment(adapter_func, config, auth_path)
+
+
+@sorcerun.command()
+@click.argument("python_file", type=click.Path(exists=True, dir_okay=False))
+@click.argument("grid_config_file", type=click.Path(exists=True, dir_okay=False))
+@click.option("--auth_path", default=AUTH_FILE, help="Path to sorcerun_auth.json file.")
+def grid_run(python_file, grid_config_file, auth_path):
+    # Load the adapter function from the provided Python file
+    adapter_func = load_adapter_function(python_file)
+
+    # Load the config from the provided YAML file
+    with open(grid_config_file, "r") as file:
+        config = yaml.safe_load(file)
+
+    for k, v in config.items():
+        if type(v) != list:
+            config[k] = [v]
+
+    param_grid = ParameterGrid([config])
+    print(f"Parameter grid contains {len(param_grid)} combinations")
+
+    # Run the Sacred experiment with the provided adapter function and config
+    for param in param_grid:
+        print(f"Running with config:\n{param}")
+        run_sacred_experiment(adapter_func, config, auth_path)
 
 
 @sorcerun.group()
