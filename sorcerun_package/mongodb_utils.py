@@ -15,12 +15,46 @@ def mongodb_server(conf_path):
         stdout=subprocess.DEVNULL,  # Suppress output
     )
 
+    # read from log file using tail and then clean it up using jq
+    with open(conf_path, "r") as conf_file:
+        conf = yaml.load(conf_file.read(), Loader=yaml.Loader)
+        log_path = conf["systemLog"]["path"]
+
+    # Failed attempt at reading important stuff from logs and printing on a line
+
+    # separator = ", "
+    # jq_command = (
+    #     "["
+    #     + separator.join(
+    #         [
+    #             '.t."$date"',
+    #             r".s",
+    #             r".c",
+    #             r".id",
+    #             r".ctx",
+    #             r".msg",
+    #             r".attr.mechanism",
+    #             r".attr.principalName",
+    #             r".attr.remote",
+    #         ]
+    #     )
+    #     + "]"
+    # )
+
+    jq_command = "."
+    taillog_process = subprocess.Popen(
+        f"tail -f {log_path} | jq '{jq_command}'",
+        shell=True,
+    )
     try:
         yield
     finally:
         click.echo(f"Terimnating MongoD server that used config at {conf_path}\n")
         mongodb_process.terminate()
         mongodb_process.wait()
+
+        taillog_process.terminate()
+        taillog_process.wait()
 
 
 def create_mongod_conf(db_path, conf_path, auth=True):
