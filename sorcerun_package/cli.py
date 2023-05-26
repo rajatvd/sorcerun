@@ -52,7 +52,7 @@ def grid_run(python_file, grid_config_file, auth_path):
     # Run the Sacred experiment with the provided adapter function and config
     for param in param_grid:
         print(f"Running with config:\n{param}")
-        run_sacred_experiment(adapter_func, config, auth_path)
+        run_sacred_experiment(adapter_func, param, auth_path)
 
 
 @sorcerun.group()
