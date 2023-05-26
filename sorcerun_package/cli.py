@@ -97,5 +97,126 @@ def omniboard():
         click.echo(f"Error occurred while running Omniboard: {e}")
 
 
+@sorcerun.command()
+def screen():
+    screen_session_name = "sorcerun"
+    # Check if in conda environment
+    conda_env = os.environ.get("CONDA_DEFAULT_ENV", None)
+    activate_conda = f"conda activate {conda_env}\n" if conda_env else ""
+
+    # Start new detached screen session
+    screen_command = ["screen", "-dmS", screen_session_name]
+    subprocess.Popen(screen_command)
+
+    # # Start 'sorcerun mongo start' in first window
+    # screen_command = [
+    #     "screen",
+    #     "-S",
+    #     screen_session_name,
+    #     "-X",
+    #     "stuff",
+    #     activate_conda + "sorcerun mongo start\n",
+    # ]
+    # subprocess.Popen(screen_command)
+
+    # # Name the first window
+    # screen_command = [
+    #     "screen",
+    #     "-S",
+    #     screen_session_name,
+    #     "-p",
+    #     "0",
+    #     "-X",
+    #     "title",
+    #     "mongo_start",
+    # ]
+    # subprocess.Popen(screen_command)
+
+    # Create new window
+    screen_command = [
+        "screen",
+        "-S",
+        screen_session_name,
+        "-X",
+        "screen",
+        "-t",
+        "mongodb",
+    ]
+    subprocess.Popen(screen_command)
+
+    # Start 'sorcerun mongo start' in first window
+    screen_command = [
+        "screen",
+        "-S",
+        screen_session_name,
+        "-p",
+        "mongodb",
+        "-X",
+        "stuff",
+        activate_conda + "sorcerun mongo start\n",
+    ]
+    subprocess.Popen(screen_command)
+
+    screen_command = [
+        "screen",
+        "-S",
+        screen_session_name,
+        "-p",
+        "1",
+        "-X",
+        "rename",
+        "mongodb",
+    ]
+    subprocess.Popen(screen_command)
+
+    # Create new window
+    screen_command = [
+        "screen",
+        "-S",
+        screen_session_name,
+        "-X",
+        "screen",
+        "-t",
+        "omniboard",
+    ]
+    subprocess.Popen(screen_command)
+
+    # Start 'sorcerun omniboard' in second window
+    screen_command = [
+        "screen",
+        "-S",
+        screen_session_name,
+        "-p",
+        "omniboard",
+        "-X",
+        "stuff",
+        activate_conda + "sorcerun omniboard\n",
+    ]
+    subprocess.Popen(screen_command)
+
+    screen_command = [
+        "screen",
+        "-S",
+        screen_session_name,
+        "-p",
+        "2",
+        "-X",
+        "title",
+        "omniboard",
+    ]
+    subprocess.Popen(screen_command)
+
+    screen_command = [
+        "screen",
+        "-S",
+        screen_session_name,
+        "-p",
+        "0",
+        "-X",
+        "kill",
+    ]
+    subprocess.Popen(screen_command)
+
+
 if __name__ == "__main__":
     sorcerun()
