@@ -47,11 +47,12 @@ def grid_run(python_file, grid_config_file, auth_path):
             config[k] = [v]
 
     param_grid = ParameterGrid([config])
-    print(f"Parameter grid contains {len(param_grid)} combinations")
+    total_num_params = len(param_grid)
+    print(f"Parameter grid contains {total_num_params} combinations")
 
     # Run the Sacred experiment with the provided adapter function and config
-    for param in param_grid:
-        print(f"Running with config:\n{param}")
+    for i, param in enumerate(param_grid):
+        print(f"Run {i+1}/{total_num_params} with config:\n{param}")
         run_sacred_experiment(adapter_func, param, auth_path)
 
 
