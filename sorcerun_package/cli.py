@@ -128,6 +128,15 @@ def omniboard():
 @sorcerun.command()
 def screen():
     screen_session_name = "sorcerun"
+
+    # result = subprocess.Popen("screen -ls", shell=True, stdout=subprocess.PIPE)
+    # output = "\n".join(str(a) for a in result.stdout.readlines())
+
+    # click.echo(output)
+    # if screen_session_name in output:
+    #     click.echo(f"Screen session '{screen_session_name}' already exists.")
+    #     return
+
     # Check if in conda environment
     conda_env = os.environ.get("CONDA_DEFAULT_ENV", None)
     activate_conda = f"conda activate {conda_env}\n" if conda_env else ""
