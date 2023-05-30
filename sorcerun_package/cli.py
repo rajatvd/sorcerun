@@ -108,7 +108,12 @@ def omniboard():
         with open(AUTH_FILE, "r") as f:
             auth_data = json.load(f)
 
-        mongodb_uri = f"mongodb://{auth_data['client_kwargs']['username']}:{auth_data['client_kwargs']['password']}@{auth_data['client_kwargs']['host']}:{auth_data['client_kwargs']['port']}/{auth_data['db_name']}?authSource=admin"
+        atlas = auth_data.get("atlas_connection_string", 0)
+        mongodb_uri = (
+            f"{atlas}/{auth_data['db_name']}"
+            if atlas != 0
+            else f"mongodb://{auth_data['client_kwargs']['username']}:{auth_data['client_kwargs']['password']}@{auth_data['client_kwargs']['host']}:{auth_data['client_kwargs']['port']}/{auth_data['db_name']}?authSource=admin"
+        )
         # mongodb_uri = f'mongodb://{auth_data["client_kwargs"]["username"]}:{auth_data["client_kwargs"]["password"]}@127.0.0.1:27017/{auth_data["db_name"]}?authSource=admin'
 
         click.echo("Starting Omniboard...")

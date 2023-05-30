@@ -18,6 +18,11 @@ class AuthMongoDbOption(CommandLineOption):
     def apply(cls, args, run):
         with open(args) as f:
             auth = json.loads(f.read())
-        client = MongoClient(**auth["client_kwargs"])
+        atlas = auth.get("atlas_connection_string", 0)
+        if atlas != 0:
+            print(atlas)
+            client = MongoClient(atlas)
+        else:
+            client = MongoClient(**auth["client_kwargs"])
         mongo = MongoObserver.create(db_name=auth["db_name"], client=client)
         run.observers.append(mongo)

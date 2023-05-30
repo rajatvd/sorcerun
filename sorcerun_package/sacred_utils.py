@@ -20,8 +20,14 @@ def run_sacred_experiment(adapter_func, config, auth_path=AUTH_FILE):
     with open(auth_path, "r") as f:
         auth_data = json.load(f)
 
+    atlas = auth_data.get("atlas_connection_string", 0)
+    url = (
+        atlas
+        if atlas != 0
+        else f"mongodb://{auth_data['client_kwargs']['username']}:{auth_data['client_kwargs']['password']}@{auth_data['client_kwargs']['host']}:{auth_data['client_kwargs']['port']}",
+    )
     observer = MongoObserver(
-        url=f"mongodb://{auth_data['client_kwargs']['username']}:{auth_data['client_kwargs']['password']}@{auth_data['client_kwargs']['host']}:{auth_data['client_kwargs']['port']}",
+        url=url,
         db_name=auth_data["db_name"],
     )
 
