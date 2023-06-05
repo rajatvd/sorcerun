@@ -52,8 +52,20 @@ def grid_run(python_file, grid_config_file, auth_path):
 
     # Run the Sacred experiment with the provided adapter function and config
     for i, param in enumerate(param_grid):
-        print(f"Run {i+1}/{total_num_params} with config:\n{param}")
+        print(
+            "-" * 5
+            + "GRID RUN INFO: "
+            + f"Starting run {i+1}/{total_num_params}"
+            + "-" * 5
+        )
+        print(f"Config:\n{param}")
         run_sacred_experiment(adapter_func, param, auth_path)
+        print(
+            "-" * 5
+            + "GRID RUN INFO: "
+            + f"Completed run {i+1}/{total_num_params}"
+            + "-" * 5
+        )
 
 
 @sorcerun.group()
