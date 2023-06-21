@@ -1,4 +1,5 @@
 import click
+import time
 from sklearn.model_selection import ParameterGrid
 import os
 import subprocess
@@ -106,9 +107,8 @@ def start():
 
     print(conf_path)
     with mongodb_server(conf_path):
-        # TODO pipe log outputs to stdout or something nicely
         while True:
-            pass
+            time.sleep(10)
 
 
 @sorcerun.command()
