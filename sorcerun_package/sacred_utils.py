@@ -3,13 +3,23 @@ from sacred.observers import MongoObserver
 import importlib
 import json
 from .globals import AUTH_FILE
+import sys
+import os
 
 
 def load_adapter_function(python_file):
-    spec = importlib.util.spec_from_file_location("adapter_module", python_file)
-    adapter_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(adapter_module)
+    # spec = importlib.util.spec_from_file_location("adapter_module", python_file)
+    # adapter_module = importlib.util.module_from_spec(spec)
+    # spec.loader.exec_module(adapter_module)
+
+    adapter_file_dir = os.path.dirname(os.path.abspath(python_file))
+    adapter_file_name = os.path.basename(python_file).replace(".py", "")
+
+    sys.path.insert(0, adapter_file_dir)
+    adapter_module = importlib.import_module(adapter_file_name)
+    sys.path.pop(0)
     adapter_func = adapter_module.adapter
+
     return adapter_func
 
 
