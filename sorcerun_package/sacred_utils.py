@@ -1,4 +1,5 @@
 from sacred import Experiment
+import traceback
 from sacred.observers import MongoObserver
 import importlib
 import json
@@ -50,4 +51,7 @@ def run_sacred_experiment(adapter_func, config, auth_path=AUTH_FILE):
         result = adapter_func(_config, _run)
         return result
 
-    ex.run()
+    try:
+        ex.run()
+    except:
+        traceback.print_exc()
