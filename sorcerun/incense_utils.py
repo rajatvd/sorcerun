@@ -37,6 +37,7 @@ def find_differing_keys(ds):
     return ks
 
 
+# %%
 def squish_dict(d):
     """Flatten a nested dictionary into a single dictionary.
 
@@ -80,6 +81,59 @@ def squish_dict(d):
 
         del d[k]
     return d
+
+
+# %%
+def unsquish_dict(d):
+    """Inflate a flattened dictionary back into a nested dictionary.
+
+    Nested keys are indexed with a dot. For example,
+
+    d = {
+        'a': 1,
+        'b.c': 2,
+        'b.d': 3,
+        'b.blah.foo': 67,
+        'b.blah.bar': 'no',
+        'e': 'lol'
+    }
+
+    becomes
+
+    {
+        'a': 1,
+        'b': {
+            'c': 2,
+            'd': 3,
+            'blah': {
+                'foo': 67,
+                'bar': 'no'
+            }
+        },
+        'e': 'lol'
+    }
+
+    """
+    result = {}
+    for k, v in d.items():
+        assert type(k) == str, "cannot unsquish non-string keys"
+        keys = k.split(".")
+        assert len(keys) > 0, "cannot unsquish keys with no content"
+
+        # Start from the top-level dictionary and gradually drill down
+        current_level = result
+        for sub_key in keys[:-1]:
+            if sub_key not in current_level:
+                current_level[sub_key] = {}
+            current_level = current_level[sub_key]
+            assert isinstance(
+                current_level, dict
+            ), "non-dict intermediate level detected"
+
+        # By this point, current_level is the dictionary where the value should be placed
+        final_key = keys[-1]
+        current_level[final_key] = v
+    return result
 
 
 # %%
