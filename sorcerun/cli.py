@@ -7,6 +7,7 @@ import json, yaml
 from contextlib import ExitStack
 from .mongodb_utils import mongodb_server, init_mongodb
 from .sacred_utils import load_adapter_function, run_sacred_experiment
+from .incense_utils import squish_dict, unsquish_dict
 from .globals import AUTH_FILE
 
 
@@ -43,6 +44,7 @@ def grid_run(python_file, grid_config_file, auth_path):
     with open(grid_config_file, "r") as file:
         config = yaml.safe_load(file)
 
+    config = squish_dict(config)
     for k, v in config.items():
         if type(v) != list:
             config[k] = [v]
@@ -53,14 +55,15 @@ def grid_run(python_file, grid_config_file, auth_path):
 
     # Run the Sacred experiment with the provided adapter function and config
     for i, param in enumerate(param_grid):
+        conf = unsquish_dict(param)
         print(
             "-" * 5
             + "GRID RUN INFO: "
             + f"Starting run {i+1}/{total_num_params}"
             + "-" * 5
         )
-        print(f"Config:\n{param}")
-        run_sacred_experiment(adapter_func, param, auth_path)
+        print(f"Config:\n{conf}")
+        run_sacred_experiment(adapter_func, conf, auth_path)
         print(
             "-" * 5
             + "GRID RUN INFO: "
