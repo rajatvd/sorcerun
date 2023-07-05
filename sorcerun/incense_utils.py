@@ -139,8 +139,8 @@ def unsquish_dict(d):
 
 
 # %%
-def exps_to_metrics_xarray(exps, exclude_keys=["seed"]):
-    """Convert a list of incense experiments to xarrays.
+def exps_to_xarray(exps, exclude_keys=["seed"]):
+    """Convert a list of incense experiments to two xarrays.
 
     :param exps: input list of experiments
     :param exclude_keys: config keys to exclude
