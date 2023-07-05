@@ -12,6 +12,8 @@ setup(
         "pyyaml",
         "scikit-learn",
         "incense",
+        "xarray",
+        "tqdm",
     ],
     entry_points="""
         [console_scripts]

@@ -4,6 +4,8 @@ from functools import partial
 from pyrsistent import thaw
 import matplotlib.pyplot as plt
 import numpy as np
+import xarray as xr
+from tqdm import tqdm
 
 
 def get_incense_loader(authfile="sorcerun_auth.json"):
@@ -137,41 +139,91 @@ def unsquish_dict(d):
 
 
 # %%
-def plot_experiments(
-    exps,
-    x_key,
-    y_func,
-    constants={},
-    exclude_keys=["seed"],
-    short_names={},
-    label_extra="",
-    plot=True,
-    **plot_kwargs,
-):
-    cfgs = {ex: squish_dict(thaw(ex.config)) for ex in exps}
+def exps_to_metrics_xarray(exps, exclude_keys=["seed"]):
+    """Convert a list of incense experiments to xarrays.
 
-    filtered = [ex for ex in exps if constants.items() <= cfgs[ex].items()]
+    :param exps: input list of experiments
+    :param exclude_keys: config keys to exclude
 
-    dks = find_differing_keys([cfgs[ex] for ex in filtered])
-    dks = [k for k in dks if k not in exclude_keys + [x_key]]
+    Returns: tuple (exps_arr, metrics_arr)
+    Both are xarrays.
 
-    short = {**{k: k for k in dks}, **short_names}
+    exps_arr has dims given by the union of squished config keys over all experiments.
+    The corresponding coords are also the union over all possible values of the
+    corresponding config key. The value of each entry is the incense Experiment object.
 
-    datas = {}
-    for ex in filtered:
-        plot_key = tuple(cfgs[ex][k] for k in dks)
-        if plot_key not in datas:
-            datas[plot_key] = []
-        datas[plot_key].append((cfgs[ex][x_key], y_func(ex)))
+    metrics_arr is the same as exps_arr, with two additional dims: "metric" and "step".
+    The value of each entry is now the value of the metric at step "step" for each
+    experiment.
+    """
+    # get set of axis keys from config
+    e_cfg_keys = set()
+    for e in exps:
+        e_cfg_keys = e_cfg_keys.union(set(squish_dict(thaw(e.config)).keys()))
+    axes_without_metric = list(e_cfg_keys - set(exclude_keys))
+    axes = axes_without_metric + ["metric", "step"]
+    print(f"axes={axes}")
 
-    for k, v in datas.items():
-        lab = " ".join([f"{short[dk]}={k[i]}" for i, dk in enumerate(dks)])
-        lab += label_extra
-        dat = np.array(sorted(v, key=lambda x: x[0])).T
-        if plot:
-            plt.plot(dat[0], dat[1], label=lab, **plot_kwargs)
+    e = exps[1]
+    # get coordinates of each axis key in the grid
+    # by looping through every experiment and taking the union of the coord set
+    coords = {a: set() for a in axes}
+    for e in tqdm(exps, desc="Extracting coords"):
+        e_cfg = squish_dict(thaw(e.config))
+        for a in axes:
+            if a == "metric":
+                # union all the metrics
+                s = set(e.metrics.keys())
+            elif a == "step":
+                # union over the possible steps for all metrics for this exp
+                s = set()
+                for v in e.metrics.values():
+                    s = s.union(list(v.index))
+            else:
+                s = set([e_cfg[a]])
 
-    return datas
+            # union over all the experiments
+            coords[a] = coords[a].union(s)
+    for k, v in coords.items():
+        coords[k] = sorted(list(v))
 
+    coords_without_metric = coords.copy()
+    coords_without_metric.pop("metric")
+    coords_without_metric.pop("step")
 
-# %%
+    # create empty xarrays
+    shape = tuple(len(coords[a]) for a in axes)
+    metric_data = np.empty(shape, dtype=np.float32)
+    metric_data.fill(np.nan)
+    metrics_arr = xr.DataArray(
+        metric_data,
+        coords=coords,
+        dims=axes,
+    )
+
+    shape_without_metric = tuple(len(coords[a]) for a in axes_without_metric)
+    exps_data = np.empty(shape_without_metric, dtype=object)
+    exps_data.fill(np.nan)
+    exps_arr = xr.DataArray(
+        exps_data,
+        coords=coords_without_metric,
+        dims=axes_without_metric,
+    )
+
+    # now fill in the metric values
+    for e in tqdm(exps[::-1], desc="Filling in metrics"):
+        e_cfg_index = squish_dict(thaw(e.config))
+        [e_cfg_index.pop(k) for k in exclude_keys]
+        exps_arr.loc[e_cfg_index] = e
+
+        # get the x_arr of this experiment
+        e_arr = metrics_arr.sel(**e_cfg_index)
+
+        for k, v in e.metrics.items():
+            # fill in each metric into the x_arr
+            # Note that we are only filling in values of v.index, and this will
+            # always be a subset of the coordspace of step since we did the unioning
+            # before.
+            e_arr.loc[dict(metric=k, step=v.index)] = v.values
+
+    return exps_arr, metrics_arr
