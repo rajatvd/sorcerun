@@ -16,7 +16,7 @@ def get_incense_loader(authfile="sorcerun_auth.json"):
     return incense.ExperimentLoader(mongo_uri=mongo_uri, db_name=db_name)
 
 
-def filter_by_dict(obj, obj_to_dict=lambda e: e.config, **kwargs):
+def filter_by_dict(obj, obj_to_dict=lambda e: squish_dict(thaw(e.config)), **kwargs):
     d = obj_to_dict(obj)
     out = True
     for k, v in kwargs.items():
@@ -172,3 +172,6 @@ def plot_experiments(
             plt.plot(dat[0], dat[1], label=lab, **plot_kwargs)
 
     return datas
+
+
+# %%
