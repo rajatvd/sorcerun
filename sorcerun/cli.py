@@ -6,7 +6,7 @@ import subprocess
 import json, yaml
 from contextlib import ExitStack
 from .mongodb_utils import mongodb_server, init_mongodb
-from .sacred_utils import load_adapter_function, run_sacred_experiment
+from .sacred_utils import load_adapter_module, run_sacred_experiment
 from .incense_utils import squish_dict, unsquish_dict
 from .globals import AUTH_FILE
 
@@ -22,7 +22,12 @@ def sorcerun():
 @click.option("--auth_path", default=AUTH_FILE, help="Path to sorcerun_auth.json file.")
 def run(python_file, config_file, auth_path):
     # Load the adapter function from the provided Python file
-    adapter_func = load_adapter_function(python_file)
+    adapter_module = load_adapter_module(python_file)
+    if not hasattr(adapter_module, "adapter"):
+        raise KeyError(
+            f"Adapter file at {python_file} does not have a function named adapter"
+        )
+    adapter_func = adapter_module.adapter
 
     # Load the config from the provided YAML file
     with open(config_file, "r") as file:
@@ -38,7 +43,14 @@ def run(python_file, config_file, auth_path):
 @click.option("--auth_path", default=AUTH_FILE, help="Path to sorcerun_auth.json file.")
 def grid_run(python_file, grid_config_file, auth_path):
     # Load the adapter function from the provided Python file
-    adapter_func = load_adapter_function(python_file)
+    adapter_module = load_adapter_module(python_file)
+    if not hasattr(adapter_module, "adapter"):
+        raise KeyError(
+            f"Adapter file at {python_file} does not have a function named adapter"
+        )
+    adapter_func = adapter_module.adapter
+    pre_grid_hook = getattr(adapter_module, "pre_grid_hook", None)
+    post_grid_hook = getattr(adapter_module, "post_grid_hook", None)
 
     # Load the config from the provided YAML file
     with open(grid_config_file, "r") as file:
@@ -62,8 +74,17 @@ def grid_run(python_file, grid_config_file, auth_path):
             + f"Starting run {i+1}/{total_num_params}"
             + "-" * 5
         )
-        print(f"Config:\n{conf}")
+        if pre_grid_hook is not None:
+            print(f"Running pre_grid_hook")
+            pre_grid_hook(conf)
+
+        print(f"Running experiment with config:\n{conf}")
         run_sacred_experiment(adapter_func, conf, auth_path)
+
+        if post_grid_hook is not None:
+            print(f"Running post_grid_hook")
+            post_grid_hook(conf)
+
         print(
             "-" * 5
             + "GRID RUN INFO: "

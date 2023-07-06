@@ -8,7 +8,7 @@ import sys
 import os
 
 
-def load_adapter_function(python_file):
+def load_adapter_module(python_file):
     # spec = importlib.util.spec_from_file_location("adapter_module", python_file)
     # adapter_module = importlib.util.module_from_spec(spec)
     # spec.loader.exec_module(adapter_module)
@@ -19,9 +19,8 @@ def load_adapter_function(python_file):
     sys.path.insert(0, adapter_file_dir)
     adapter_module = importlib.import_module(adapter_file_name)
     sys.path.pop(0)
-    adapter_func = adapter_module.adapter
 
-    return adapter_func
+    return adapter_module
 
 
 def run_sacred_experiment(adapter_func, config, auth_path=AUTH_FILE):
