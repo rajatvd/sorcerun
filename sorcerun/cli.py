@@ -6,7 +6,7 @@ import subprocess
 import json, yaml
 from contextlib import ExitStack
 from .mongodb_utils import mongodb_server, init_mongodb
-from .sacred_utils import load_adapter_module, run_sacred_experiment
+from .sacred_utils import load_python_module, run_sacred_experiment
 from .incense_utils import squish_dict, unsquish_dict
 from .globals import AUTH_FILE
 
@@ -22,16 +22,33 @@ def sorcerun():
 @click.option("--auth_path", default=AUTH_FILE, help="Path to sorcerun_auth.json file.")
 def run(python_file, config_file, auth_path):
     # Load the adapter function from the provided Python file
-    adapter_module = load_adapter_module(python_file)
+    adapter_module = load_python_module(python_file)
     if not hasattr(adapter_module, "adapter"):
         raise KeyError(
-            f"Adapter file at {python_file} does not have a function named adapter"
+            f"Adapter file at {python_file} does not have an attribute named adapter"
         )
     adapter_func = adapter_module.adapter
 
-    # Load the config from the provided YAML file
-    with open(config_file, "r") as file:
-        config = yaml.safe_load(file)
+    _, config_ext = os.path.splitext(config_file)
+
+    # Check extension of config file and load it accordingly
+    if config_ext == ".json":
+        with open(config_file, "r") as file:
+            config = json.load(file)
+    elif config_ext == ".yaml":
+        with open(config_file, "r") as file:
+            config = yaml.safe_load(file)
+    elif config_ext == ".py":
+        config_module = load_python_module(config_file)
+        if not hasattr(config_module, "config"):
+            raise KeyError(
+                f"Config file at {config_file} does not have an attribute named config"
+            )
+        config = config_module.config
+    else:
+        raise ValueError(
+            f"Config file at {config_file} is not a valid JSON, YAML or python file"
+        )
 
     # Run the Sacred experiment with the provided adapter function and config
     run_sacred_experiment(adapter_func, config, auth_path)
