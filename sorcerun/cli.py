@@ -69,22 +69,35 @@ def grid_run(python_file, grid_config_file, auth_path):
     pre_grid_hook = getattr(adapter_module, "pre_grid_hook", None)
     post_grid_hook = getattr(adapter_module, "post_grid_hook", None)
 
-    # Load the config from the provided YAML file
-    with open(grid_config_file, "r") as file:
-        config = yaml.safe_load(file)
+    # Check extension of grid config file and load it accordingly
+    _, config_ext = os.path.splitext(grid_config_file)
 
-    config = squish_dict(config)
-    for k, v in config.items():
-        if type(v) != list:
-            config[k] = [v]
+    if config_ext == ".yaml":
+        with open(grid_config_file, "r") as file:
+            config = yaml.safe_load(file)
+        config = squish_dict(config)
+        for k, v in config.items():
+            if type(v) != list:
+                config[k] = [v]
+        param_grid = ParameterGrid([config])
+        configs = [unsquish_dict(param) for param in param_grid]
+    elif config_ext == ".py":
+        config_module = load_python_module(grid_config_file)
+        if not hasattr(config_module, "configs"):
+            raise KeyError(
+                f"Config file at {grid_config_file} does not have an attribute named configs"
+            )
+        configs = config_module.configs
+    else:
+        raise ValueError(
+            f"Config file at {grid_config_file} is not a valid YAML or python file"
+        )
 
-    param_grid = ParameterGrid([config])
-    total_num_params = len(param_grid)
-    print(f"Parameter grid contains {total_num_params} combinations")
+    total_num_params = len(configs)
+    print(f"Config grid contains {total_num_params} combinations")
 
     # Run the Sacred experiment with the provided adapter function and config
-    for i, param in enumerate(param_grid):
-        conf = unsquish_dict(param)
+    for i, conf in enumerate(configs):
         print(
             "-" * 5
             + "GRID RUN INFO: "
