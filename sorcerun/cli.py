@@ -60,7 +60,7 @@ def run(python_file, config_file, auth_path):
 @click.option("--auth_path", default=AUTH_FILE, help="Path to sorcerun_auth.json file.")
 def grid_run(python_file, grid_config_file, auth_path):
     # Load the adapter function from the provided Python file
-    adapter_module = load_adapter_module(python_file)
+    adapter_module = load_python_module(python_file)
     if not hasattr(adapter_module, "adapter"):
         raise KeyError(
             f"Adapter file at {python_file} does not have a function named adapter"
