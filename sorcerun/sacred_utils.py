@@ -27,21 +27,27 @@ def run_sacred_experiment(adapter_func, config, auth_path=AUTH_FILE):
     experiment_name = getattr(adapter_func, "experiment_name", "sorcerun_experiment")
     ex = Experiment(experiment_name)
 
-    with open(auth_path, "r") as f:
-        auth_data = json.load(f)
+    # Read auth_data from auth_path
+    if os.path.exists(auth_path):
+        with open(auth_path, "r") as f:
+            auth_data = json.load(f)
 
-    atlas = auth_data.get("atlas_connection_string", 0)
-    url = (
-        atlas
-        if atlas != 0
-        else f"mongodb://{auth_data['client_kwargs']['username']}:{auth_data['client_kwargs']['password']}@{auth_data['client_kwargs']['host']}:{auth_data['client_kwargs']['port']}",
-    )
-    observer = MongoObserver(
-        url=url,
-        db_name=auth_data["db_name"],
-    )
+        atlas = auth_data.get("atlas_connection_string", 0)
+        url = (
+            atlas
+            if atlas != 0
+            else f"mongodb://{auth_data['client_kwargs']['username']}:{auth_data['client_kwargs']['password']}@{auth_data['client_kwargs']['host']}:{auth_data['client_kwargs']['port']}",
+        )
+        observer = MongoObserver(
+            url=url,
+            db_name=auth_data["db_name"],
+        )
 
-    ex.observers.append(observer)
+        ex.observers.append(observer)
+    else:
+        print(
+            f"WARNING: auth file at {auth_path} does not exist. Not adding mongo observer"
+        )
 
     ex.add_config(config)
 
