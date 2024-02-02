@@ -14,3 +14,4 @@ TODO: add simple example
 -   [ ] General utilities with `incense` -- maybe build `streamlit` app separately?
 -   [ ] Better logging for the mongod server
 -   [ ] Add example and documentation
+-   [ ] Change description to be simpler -- logged function calls
