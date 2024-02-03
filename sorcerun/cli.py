@@ -108,7 +108,8 @@ def grid_run(python_file, grid_config_file, auth_path):
             print(f"Running pre_grid_hook")
             pre_grid_hook(conf)
 
-        print(f"Running experiment with config:\n{conf}")
+        print("Running experiment with config:")
+        print(json.dumps(conf, indent=2))
         run_sacred_experiment(adapter_func, conf, auth_path)
 
         if post_grid_hook is not None:
