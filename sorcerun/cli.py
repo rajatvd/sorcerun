@@ -7,7 +7,7 @@ import json, yaml
 from contextlib import ExitStack
 from .mongodb_utils import mongodb_server, init_mongodb
 from .sacred_utils import load_python_module, run_sacred_experiment
-from .incense_utils import squish_dict, unsquish_dict
+from .incense_utils import squish_dict, unsquish_dict, process_and_save_grid_to_netcdf
 from .globals import AUTH_FILE
 
 
@@ -55,10 +55,26 @@ def run(python_file, config_file, auth_path):
 
 
 @sorcerun.command()
-@click.argument("python_file", type=click.Path(exists=True, dir_okay=False))
-@click.argument("grid_config_file", type=click.Path(exists=True, dir_okay=False))
-@click.option("--auth_path", default=AUTH_FILE, help="Path to sorcerun_auth.json file.")
-def grid_run(python_file, grid_config_file, auth_path):
+@click.argument(
+    "python_file",
+    type=click.Path(exists=True, dir_okay=False),
+)
+@click.argument(
+    "grid_config_file",
+    type=click.Path(exists=True, dir_okay=False),
+)
+@click.option(
+    "--auth_path",
+    default=AUTH_FILE,
+    help="Path to sorcerun_auth.json file.",
+)
+@click.option(
+    "--post_process",
+    "-p",
+    is_flag=True,
+    help="Post process and save grid to netcdf",
+)
+def grid_run(python_file, grid_config_file, auth_path, post_process=False):
     # Load the adapter function from the provided Python file
     adapter_module = load_python_module(python_file)
     if not hasattr(adapter_module, "adapter"):
@@ -81,6 +97,7 @@ def grid_run(python_file, grid_config_file, auth_path):
                 config[k] = [v]
         param_grid = ParameterGrid([config])
         configs = [unsquish_dict(param) for param in param_grid]
+
     elif config_ext == ".py":
         config_module = load_python_module(grid_config_file)
         if not hasattr(config_module, "configs"):
@@ -122,6 +139,24 @@ def grid_run(python_file, grid_config_file, auth_path):
             + f"Completed run {i+1}/{total_num_params}"
             + "-" * 5
         )
+
+    if post_process:
+        # Post process grid and save xarray to netcdf
+        # check if each config in configs has the same "grid_id" and assign it to gid
+        gid = configs[0].get("grid_id", None)
+        same_gid = False
+        if gid is not None:
+            same_gid = all(conf.get("grid_id", None) == gid for conf in configs)
+
+        if same_gid:
+            print(f"All configs have the same grid_id: {gid}")
+            print(f"Processing and saving grid to netcdf")
+            process_and_save_grid_to_netcdf(gid)
+        else:
+            print(
+                f"Configs do not have the same grid_id."
+                + " Skipping processing and saving grid to netcdf"
+            )
 
 
 @sorcerun.group()

@@ -1,4 +1,5 @@
 import incense
+import os
 import json
 from functools import partial
 from pyrsistent import thaw
@@ -6,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from tqdm import tqdm
+from .globals import GRID_OUTPUTS
 
 
 def get_incense_loader(authfile="sorcerun_auth.json"):
@@ -227,3 +229,38 @@ def exps_to_xarray(exps, exclude_keys=["seed"]):
             e_arr.loc[dict(metric=k, step=v.index)] = v.values
 
     return exps_arr, metrics_arr
+
+
+def print_file_size(file_path):
+    file_info = os.stat(file_path)
+    size_in_bytes = file_info.st_size
+
+    if size_in_bytes < 1024:
+        print(f"The size of '{file_path}' is: {size_in_bytes} bytes")
+    elif size_in_bytes >= 1024 and size_in_bytes < 1024**2:
+        print(f"The size of '{file_path}' is: {size_in_bytes / 1024:.2f} KB")
+    elif size_in_bytes >= 1024**2 and size_in_bytes < 1024**3:
+        print(f"The size of '{file_path}' is: {size_in_bytes / 1024**2:.2f} MB")
+    else:
+        print(f"The size of '{file_path}' is: {size_in_bytes / 1024**3:.2f} GB")
+
+
+def process_and_save_grid_to_netcdf(gid):
+    loader = get_incense_loader()
+    grid_exps = loader.find_by_config_key("grid_id", gid)
+    e = grid_exps[0]
+
+    print(f"Found {len(grid_exps)} experiments with grid_id {gid}")
+
+    grid_exps_xr, grid_metrics_xr = exps_to_xarray(grid_exps)
+    metrics_reduced_xr = grid_metrics_xr
+
+    save_dir = f"{GRID_OUTPUTS}/{gid}"
+    os.makedirs(save_dir, exist_ok=True)
+
+    netcdf_save_path = f"{save_dir}/{gid}.nc"
+    print(f"Saving to {netcdf_save_path}")
+
+    metrics_reduced_xr.to_netcdf(netcdf_save_path)
+
+    print_file_size(netcdf_save_path)
