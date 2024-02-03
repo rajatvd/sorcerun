@@ -79,7 +79,7 @@ def grid_run(python_file, grid_config_file, auth_path, post_process=False):
     adapter_module = load_python_module(python_file)
     if not hasattr(adapter_module, "adapter"):
         raise KeyError(
-            f"Adapter file at {python_file} does not have a function named adapter"
+            f"Adapter file at {python_file} does not have an attribute named adapter"
         )
     adapter_func = adapter_module.adapter
     pre_grid_hook = getattr(adapter_module, "pre_grid_hook", None)
