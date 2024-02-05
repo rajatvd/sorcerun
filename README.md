@@ -15,3 +15,4 @@ TODO: add simple example
 -   [x] Better logging for the mongod server
 -   [ ] Add example and documentation
 -   [ ] Change description to be simpler -- logged function calls
+-   [ ] Improve `grid_plotter` with more features for plot customization
