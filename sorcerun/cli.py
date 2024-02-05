@@ -362,5 +362,28 @@ def screen():
     subprocess.Popen(screen_command)
 
 
+# command to start grid_plotter streamlit app
+@sorcerun.command()
+def grid_plotter():
+    try:
+        this_file_path = os.path.abspath(__file__)
+        this_dir = os.path.dirname(this_file_path)
+        path_to_analysis_file = os.path.join(this_dir, "streamlit_analysis.py")
+
+        with ExitStack() as stack:
+            click.echo("Starting Streamlit app...")
+            streamlit_process = subprocess.Popen(
+                [
+                    "streamlit",
+                    "run",
+                    path_to_analysis_file,
+                ]
+            )
+            stack.callback(streamlit_process.terminate)
+            streamlit_process.wait()
+    except subprocess.CalledProcessError as e:
+        click.echo(f"Error occurred while running streamlit: {e}")
+
+
 if __name__ == "__main__":
     sorcerun()
