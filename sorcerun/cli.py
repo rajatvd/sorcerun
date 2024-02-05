@@ -368,7 +368,7 @@ def grid_plotter():
     try:
         this_file_path = os.path.abspath(__file__)
         this_dir = os.path.dirname(this_file_path)
-        path_to_analysis_file = os.path.join(this_dir, "streamlit_analysis.py")
+        path_to_analysis_file = os.path.join(this_dir, "grid_plotter.py")
 
         with ExitStack() as stack:
             click.echo("Starting Streamlit app...")
