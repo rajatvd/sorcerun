@@ -182,12 +182,24 @@ def exps_to_xarray(exps, exclude_keys=["seed"]):
                 for v in e.metrics.values():
                     s = s.union(list(v.index))
             else:
-                s = set([e_cfg[a]])
+                val = e_cfg[a]
+                # both list and np.array are not hashable, so convert to tuple
+                if type(val) == list:
+                    val = tuple(val)
+                s = set([val])
 
             # union over all the experiments
             coords[a] = coords[a].union(s)
     for k, v in coords.items():
-        coords[k] = sorted(list(v))
+        if any(type(x) == tuple for x in v):
+            vl = list(v)
+            # now use np.array because xarray doesn't like lists of tuples
+            vals = np.empty(shape=(len(vl),), dtype=object)
+            for i, val in enumerate(vl):
+                vals[i] = val
+        else:
+            vals = sorted(list(v))
+        coords[k] = vals
 
     coords_without_metric = coords.copy()
     coords_without_metric.pop("metric")
@@ -216,6 +228,12 @@ def exps_to_xarray(exps, exclude_keys=["seed"]):
     for e in tqdm(exps[::-1], desc="Filling in metrics"):
         e_cfg_index = squish_dict(thaw(e.config))
         [e_cfg_index.pop(k) for k in exclude_keys]
+
+        # convert values of type list to tuple
+        for k, v in e_cfg_index.items():
+            if type(v) == list:
+                e_cfg_index[k] = tuple(v)
+
         exps_arr.loc[e_cfg_index] = e
 
         # get the x_arr of this experiment
@@ -260,6 +278,13 @@ def process_and_save_grid_to_netcdf(gid):
 
     netcdf_save_path = f"{save_dir}/{gid}.nc"
     print(f"Saving to {netcdf_save_path}")
+
+    old_coords = metrics_reduced_xr.coords.copy()
+    # convert coordinate values that are tuples to strings to avoid serialization issues
+    for k, v in old_coords.items():
+        if any(type(x) == tuple for x in v.values):
+            print(f"Converting coordinate values of {k} to str")
+            metrics_reduced_xr.coords[k] = [str(x) for x in v.values]
 
     metrics_reduced_xr.to_netcdf(netcdf_save_path)
 
