@@ -159,6 +159,13 @@ def grid_run(python_file, grid_config_file, auth_path, post_process=False):
             )
 
 
+@sorcerun.command()
+@click.argument("grid_id", type=str)
+def grid_to_netcdf(grid_id):
+    click.echo(f"Processing and saving grid with grid_id {grid_id} to netcdf")
+    process_and_save_grid_to_netcdf(grid_id)
+
+
 @sorcerun.group()
 def mongo():
     pass
