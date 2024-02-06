@@ -158,6 +158,18 @@ def exps_to_xarray(exps, exclude_keys=["seed"]):
     The value of each entry is now the value of the metric at step "step" for each
     experiment.
     """
+    # info about tuple/list valued coordinates:
+    # First of all, when extracting the coordinates, we need to convert list values to tuples
+    # because lists are unhashable and we use set unioning to get the unique values of each
+    # coordinate.
+    # Second, if you pass a list of tuples as coordinate values to xarray, it doesnt treat
+    # it as a 1D coordinate, but as a 2D coordinate. This is not what we want. So we convert
+    # the list of tuples to a numpy array of objects, which xarray treats as a 1D coordinate.
+
+    # Finally, when saving this to netcdf, xarray didnt like tuple values as coordinates
+    # either, so we just convert them to strings, only for saving to netcdf.
+    # This change is not in this function, but in process_and_save_grid_to_netcdf.
+
     # get set of axis keys from config
     e_cfg_keys = set()
     for e in exps:
