@@ -93,13 +93,26 @@ st.write(metric_names)
 
 st.subheader("Choose axes for each plot")
 # Choose an x and y axis from both dimensions and metrics
-x_axis = st.selectbox(
-    "X axis",
-    new_dims,
-    index=new_dims.index("step") if "step" in new_dims else 0,
-)
-y_axis = st.selectbox("Y axis", metric_names)
+with st.container():
+    col1x, col2x = st.columns(2)
+    with col1x:
+        x_axis = st.selectbox(
+            "X axis",
+            new_dims,
+            index=new_dims.index("step") if "step" in new_dims else 0,
+        )
+    with col2x:
+        st.text("")
+        st.text("")
+        log_x = st.checkbox("Log scale x axis", value=False)
 
+    col1y, col2y = st.columns(2)
+    with col1y:
+        y_axis = st.selectbox("Y axis", metric_names)
+    with col2y:
+        st.text("")
+        st.text("")
+        log_y = st.checkbox("Log scale y axis", value=False)
 # Remaining dims
 remaining_dims = sorted(list(set(new_dims) - set([x_axis, y_axis])))
 
@@ -167,6 +180,10 @@ if st.button(f"Make {len(groups)} plots"):
             label = ", ".join([f"{k}={v}" for k, v in d.items()])
             plt.plot(x, y, label=label)
 
+        if log_x:
+            plt.xscale("log")
+        if log_y:
+            plt.yscale("log")
         plt.ylabel(y_axis)
         plt.xlabel(x_axis)
         plt.legend()
