@@ -1,4 +1,5 @@
 from numpy import squeeze
+import numpy as np
 from globals import GRID_OUTPUTS
 import itertools
 import os
@@ -29,7 +30,7 @@ netcdf_file = os.path.join(grid_output_dir, f"{grid_id}.nc")
 data = xr.open_dataarray(netcdf_file)
 
 # get dims with more than 1 coordinate
-dims = sorted([dim for dim in data.dims if len(data[dim]) > 1])
+dims = sorted([dim for dim in data.dims if len(data[dim]) > 1 and dim != "metric"])
 
 # get metric names
 
@@ -94,7 +95,7 @@ st.write(metric_names)
 st.subheader("Choose axes for each plot")
 # Choose an x and y axis from both dimensions and metrics
 with st.container():
-    col1x, col2x = st.columns(2)
+    col1x, col2x, col3x = st.columns(3)
     with col1x:
         x_axis = st.selectbox(
             "X axis",
@@ -106,15 +107,21 @@ with st.container():
         st.text("")
         log_x = st.checkbox("Log scale x axis", value=False)
 
-    col1y, col2y = st.columns(2)
+    with col3x:
+        x_label = st.text_input("X label", value=x_axis)
+
+    col1y, col2y, col3y = st.columns(3)
+    # Choose multiple y axes from the metrics
     with col1y:
-        y_axis = st.selectbox("Y axis", metric_names)
+        y_axes = st.multiselect("Y axis", metric_names)
     with col2y:
         st.text("")
         st.text("")
         log_y = st.checkbox("Log scale y axis", value=False)
+    with col3y:
+        y_label = st.text_input("Y label", value="metric")
 # Remaining dims
-remaining_dims = sorted(list(set(new_dims) - set([x_axis, y_axis])))
+remaining_dims = sorted(list(set(new_dims) - set([x_axis, "metric"])))
 
 
 # Choose plot dimensions to include within a single plot
@@ -129,6 +136,8 @@ other_dims = fixed_dims_per_plot
 st.write("Dimensions that vary in each plot:")
 st.write(dims_used_in_plot)
 
+# Boolean on whether to show regression line slope
+show_slope = st.checkbox("Show regression line slope", value=False)
 
 # Boolean on whether to save the plots
 save_plots = st.checkbox("Save plots", value=False)
@@ -152,7 +161,7 @@ else:
 
 if st.button(f"Make {len(groups)} plots"):
     st.subheader(f"Creating {len(groups)} plots")
-    st.write(f"Plotting `{x_axis}` vs `{y_axis}` for each group of `{other_dims}`")
+    st.write(f"Plotting `{x_axis}` vs `{y_axes}` for each group of `{other_dims}`")
 
     TITLE_NAME = {k: k for k in other_dims}
     title_keys = other_dims
@@ -176,16 +185,38 @@ if st.button(f"Make {len(groups)} plots"):
             *[xarr.coords[dim].values for dim in dims_used_in_plot]
         ):
             d = {dim: coord[i] for i, dim in enumerate(dims_used_in_plot)}
-            y = xarr.loc[d].squeeze()
-            label = ", ".join([f"{k}={v}" for k, v in d.items()])
-            plt.plot(x, y, label=label)
+            ys = xarr.loc[d].squeeze()
+            for y_axis in y_axes:
+                y = ys.loc[dict(metric=y_axis)]
+                label = " ".join(
+                    [f"{y_axis}", ", ".join([f"{k}={v}" for k, v in d.items()])]
+                )
+
+                # check if y is all nans or infs, if so, don't plot
+                to_plot = (
+                    y.isnull().all().item() or not (y == float("inf")).all().item()
+                )
+                if to_plot:
+                    plt.plot(x, y, label=label)
+                    # add regression line slope
+                    if len(x) > 1 and show_slope:
+                        x_to_regress = np.log(x) if log_x else x
+                        y_to_regress = np.log(y) if log_y else y
+                        slope, intercept = np.polyfit(x_to_regress, y_to_regress, 1)
+                        plt.text(
+                            x[-1],
+                            y[-1],
+                            f"Slope: {slope:.7f}",
+                            horizontalalignment="right",
+                            verticalalignment="top",
+                        )
 
         if log_x:
             plt.xscale("log")
         if log_y:
             plt.yscale("log")
-        plt.ylabel(y_axis)
-        plt.xlabel(x_axis)
+        plt.ylabel(y_label)
+        plt.xlabel(x_label)
         plt.legend()
 
         # display plot in streamlit
