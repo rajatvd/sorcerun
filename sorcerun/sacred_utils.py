@@ -1,9 +1,10 @@
 from sacred import Experiment
+import pymongo
 import traceback
-from sacred.observers import MongoObserver
+from sacred.observers import MongoObserver, FileStorageObserver
 import importlib
 import json
-from .globals import AUTH_FILE
+from .globals import AUTH_FILE, RUNS_DIR
 import sys
 import os
 
@@ -23,36 +24,50 @@ def load_python_module(python_file):
     return module
 
 
-def run_sacred_experiment(adapter_func, config, auth_path=AUTH_FILE):
+def run_sacred_experiment(adapter_func, config, auth_path=AUTH_FILE, use_mongo=True):
     experiment_name = getattr(adapter_func, "experiment_name", "sorcerun_experiment")
     ex = Experiment(experiment_name)
 
     # Read auth_data from auth_path
-    if os.path.exists(auth_path):
-        with open(auth_path, "r") as f:
-            auth_data = json.load(f)
+    if use_mongo:
+        if os.path.exists(auth_path):
+            with open(auth_path, "r") as f:
+                auth_data = json.load(f)
 
-        atlas = auth_data.get("atlas_connection_string", 0)
-        url = (
-            atlas
-            if atlas != 0
-            else f"mongodb://{auth_data['client_kwargs']['username']}:{auth_data['client_kwargs']['password']}@{auth_data['client_kwargs']['host']}:{auth_data['client_kwargs']['port']}",
-        )
-        observer = MongoObserver(
-            url=url,
-            db_name=auth_data["db_name"],
-        )
+            atlas = auth_data.get("atlas_connection_string", 0)
+            url = (
+                atlas
+                if atlas != 0
+                else f"mongodb://{auth_data['client_kwargs']['username']}:{auth_data['client_kwargs']['password']}@{auth_data['client_kwargs']['host']}:{auth_data['client_kwargs']['port']}",
+            )
+            try:
+                client = pymongo.MongoClient(url)
+                client.server_info()
+                observer = MongoObserver(
+                    # url=url,
+                    client=client,
+                    db_name=auth_data["db_name"],
+                )
 
-        ex.observers.append(observer)
+                ex.observers.append(observer)
+            except Exception as e:
+                traceback.print_exc()
+                print(
+                    f"WARNING: Failed to connect to MongoDB at {url} with above exception. Not adding mongo observer"
+                )
+        else:
+            print(
+                f"WARNING: auth file at {auth_path} does not exist. Not adding mongo observer"
+            )
     else:
-        print(
-            f"WARNING: auth file at {auth_path} does not exist. Not adding mongo observer"
-        )
+        print("WARNING: Not using mongo observer (use_mongo=False was passed)")
 
+    ex.observers.append(FileStorageObserver.create(RUNS_DIR))
     ex.add_config(config)
 
     @ex.main
     def run_experiment(_config, _run):
+        _run.info["info"] = "info-entry"
         result = adapter_func(_config, _run)
         return result
 

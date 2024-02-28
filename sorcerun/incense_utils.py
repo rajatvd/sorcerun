@@ -7,8 +7,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from tqdm import tqdm
-from .globals import GRID_OUTPUTS
+from pathlib import Path
+from .globals import GRID_OUTPUTS, RUNS_DIR
 
+FILESTORAGE_SPECIAL_DIRS = ["_sources", "_resources"]
 
 def get_incense_loader(authfile="sorcerun_auth.json"):
     with open(authfile, "r") as f:
@@ -16,8 +18,32 @@ def get_incense_loader(authfile="sorcerun_auth.json"):
     db_name = js["db_name"]
     ck = js["client_kwargs"]
     mongo_uri = f"mongodb://{ck['username']}:{ck['password']}@{ck['host']}:{ck['port']}/{db_name}\?authSource=admin"
-    # print(mongo_uri)
     return incense.ExperimentLoader(mongo_uri=mongo_uri, db_name=db_name)
+
+
+def load_filesystem_expts_by_config_keys(runs_dir=RUNS_DIR, **kwargs):
+    runs_dir = Path(runs_dir)
+    configs = {
+        run_dir.name: incense.experiment._load_json_from_path(run_dir / "config.json")
+        for run_dir in runs_dir.iterdir() if run_dir.name not in FILESTORAGE_SPECIAL_DIRS
+    }
+
+    # kwargs = {"grid_id": "2024-02-27-19-34-08"}
+
+    ids = list(
+        filter(
+            partial(
+                filter_by_dict,
+                obj_to_dict=lambda i: squish_dict(thaw(configs[i])),
+                **kwargs,
+            ),
+            configs.keys(),
+        )
+    )
+
+    expts = [incense.experiment.FileSystemExperiment.from_run_dir(runs_dir / i) for i in ids]
+
+    return expts
 
 
 def filter_by_dict(obj, obj_to_dict=lambda e: squish_dict(thaw(e.config)), **kwargs):
@@ -276,8 +302,9 @@ def print_file_size(file_path):
 
 
 def process_and_save_grid_to_netcdf(gid):
-    loader = get_incense_loader()
-    grid_exps = loader.find_by_config_key("grid_id", gid)
+    # loader = get_incense_loader()
+    # grid_exps = loader.find_by_config_key("grid_id", gid)
+    grid_exps = load_filesystem_expts_by_config_keys(grid_id=gid)
     e = grid_exps[0]
 
     print(f"Found {len(grid_exps)} experiments with grid_id {gid}")
