@@ -20,7 +20,13 @@ def sorcerun():
 @click.argument("python_file", type=click.Path(exists=True, dir_okay=False))
 @click.argument("config_file", type=click.Path(exists=True, dir_okay=False))
 @click.option("--auth_path", default=AUTH_FILE, help="Path to sorcerun_auth.json file.")
-def run(python_file, config_file, auth_path):
+@click.option(
+    "--mongo",
+    "-m",
+    is_flag=True,
+    help="Use MongoObserver",
+)
+def run(python_file, config_file, auth_path, mongo):
     # Load the adapter function from the provided Python file
     adapter_module = load_python_module(python_file)
     if not hasattr(adapter_module, "adapter"):
@@ -51,7 +57,7 @@ def run(python_file, config_file, auth_path):
         )
 
     # Run the Sacred experiment with the provided adapter function and config
-    run_sacred_experiment(adapter_func, config, auth_path)
+    run_sacred_experiment(adapter_func, config, auth_path, use_mongo=mongo)
 
 
 @sorcerun.command()
@@ -74,7 +80,19 @@ def run(python_file, config_file, auth_path):
     is_flag=True,
     help="Post process and save grid to netcdf",
 )
-def grid_run(python_file, grid_config_file, auth_path, post_process=False):
+@click.option(
+    "--mongo",
+    "-m",
+    is_flag=True,
+    help="Use MongoObserver",
+)
+def grid_run(
+    python_file,
+    grid_config_file,
+    auth_path,
+    post_process=False,
+    mongo=False,
+):
     # Load the adapter function from the provided Python file
     adapter_module = load_python_module(python_file)
     if not hasattr(adapter_module, "adapter"):
@@ -127,7 +145,7 @@ def grid_run(python_file, grid_config_file, auth_path, post_process=False):
 
         print("Running experiment with config:")
         print(json.dumps(conf, indent=2))
-        run_sacred_experiment(adapter_func, conf, auth_path)
+        run_sacred_experiment(adapter_func, conf, auth_path, use_mongo=mongo)
 
         if post_grid_hook is not None:
             print(f"Running post_grid_hook")
