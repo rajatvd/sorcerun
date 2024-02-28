@@ -14,6 +14,7 @@ setup(
         "incense",
         "xarray",
         "tqdm",
+        "streamlit",
     ],
     entry_points="""
         [console_scripts]
