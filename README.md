@@ -28,6 +28,6 @@ TODO: add simple example
 -   [ ] Add example and documentation
 -   [x] Change description to be simpler -- logged function calls
 -   [ ] Improve `grid_plotter` with more features for plot customization
--   [ ] Get rid of MongoDB and just use FileStorage? All we need is a nice API to retrieve from FileStorage 
+-   [x] Get rid of MongoDB and just use FileStorage? All we need is a nice API to retrieve from FileStorage 
     - Don't have to worry about port forwarding shenanigans then
 -   [ ] Similarly, get rid of sacred too? all we are using is its logging stuff
