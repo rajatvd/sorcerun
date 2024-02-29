@@ -10,10 +10,6 @@ import os
 
 
 def load_python_module(python_file):
-    # spec = importlib.util.spec_from_file_location("adapter_module", python_file)
-    # adapter_module = importlib.util.module_from_spec(spec)
-    # spec.loader.exec_module(adapter_module)
-
     file_dir = os.path.dirname(os.path.abspath(python_file))
     file_name = os.path.basename(python_file).replace(".py", "")
 
@@ -62,6 +58,7 @@ def run_sacred_experiment(adapter_func, config, auth_path=AUTH_FILE, use_mongo=T
     else:
         print("WARNING: Not using mongo observer (use_mongo=False was passed)")
 
+    os.makedirs(RUNS_DIR, exist_ok=True)
     ex.observers.append(FileStorageObserver.create(RUNS_DIR))
     ex.add_config(config)
 

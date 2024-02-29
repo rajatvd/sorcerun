@@ -8,7 +8,7 @@ from contextlib import ExitStack
 from .mongodb_utils import mongodb_server, init_mongodb
 from .sacred_utils import load_python_module, run_sacred_experiment
 from .incense_utils import squish_dict, unsquish_dict, process_and_save_grid_to_netcdf
-from .globals import AUTH_FILE
+from .globals import AUTH_FILE, TEMP_CONFIGS_DIR
 
 
 @click.group()
@@ -145,6 +145,7 @@ def grid_run(
 
         print("Running experiment with config:")
         print(json.dumps(conf, indent=2))
+
         run_sacred_experiment(adapter_func, conf, auth_path, use_mongo=mongo)
 
         if post_grid_hook is not None:
@@ -157,6 +158,178 @@ def grid_run(
             + f"Completed run {i+1}/{total_num_params}"
             + "-" * 5
         )
+
+    if post_process:
+        # Post process grid and save xarray to netcdf
+        # check if each config in configs has the same "grid_id" and assign it to gid
+        gid = configs[0].get("grid_id", None)
+        same_gid = False
+        if gid is not None:
+            same_gid = all(conf.get("grid_id", None) == gid for conf in configs)
+
+        if same_gid:
+            print(f"All configs have the same grid_id: {gid}")
+            print(f"Processing and saving grid to netcdf")
+            process_and_save_grid_to_netcdf(gid)
+        else:
+            print(
+                f"Configs do not have the same grid_id."
+                + " Skipping processing and saving grid to netcdf"
+            )
+
+
+# %%
+@sorcerun.command()
+@click.argument(
+    "python_file",
+    type=click.Path(exists=True, dir_okay=False),
+)
+@click.argument(
+    "grid_config_file",
+    type=click.Path(exists=True, dir_okay=False),
+)
+@click.argument(
+    "slurm_config_file",
+    type=click.Path(exists=True, dir_okay=False),
+)
+@click.option(
+    "--auth_path",
+    default=AUTH_FILE,
+    help="Path to sorcerun_auth.json file.",
+)
+@click.option(
+    "--post_process",
+    "-p",
+    is_flag=True,
+    help="Post process and save grid to netcdf",
+)
+@click.option(
+    "--mongo",
+    "-m",
+    is_flag=True,
+    help="Use MongoObserver",
+)
+def grid_slurm(
+    python_file,
+    grid_config_file,
+    slurm_config_file,
+    auth_path,
+    post_process=False,
+    mongo=False,
+):
+    # Load the adapter function from the provided Python file
+    adapter_module = load_python_module(python_file)
+    if not hasattr(adapter_module, "adapter"):
+        raise KeyError(
+            f"Adapter file at {python_file} does not have an attribute named adapter"
+        )
+
+    # Check extension of grid config file and load it accordingly
+    _, config_ext = os.path.splitext(grid_config_file)
+
+    if config_ext == ".yaml":
+        with open(grid_config_file, "r") as file:
+            config = yaml.safe_load(file)
+        config = squish_dict(config)
+        for k, v in config.items():
+            if type(v) != list:
+                config[k] = [v]
+        param_grid = ParameterGrid([config])
+        configs = [unsquish_dict(param) for param in param_grid]
+
+    elif config_ext == ".py":
+        config_module = load_python_module(grid_config_file)
+        if not hasattr(config_module, "configs"):
+            raise KeyError(
+                f"Config file at {grid_config_file} does not have an attribute named configs"
+            )
+        configs = config_module.configs
+    else:
+        raise ValueError(
+            f"Config file at {grid_config_file} is not a valid YAML or python file"
+        )
+
+    total_num_params = len(configs)
+    print(f"Config grid contains {total_num_params} combinations")
+
+    # Load Slurm object from slurm_config_file
+    slurm_module = load_python_module(slurm_config_file)
+    if not hasattr(slurm_module, "slurm"):
+        raise KeyError(
+            f"slurm config file at {slurm_config_file} does not have an attribute named slurm"
+        )
+    slurm = slurm_module.slurm
+    slurm.add_arguments(wait=True)
+
+    # make a temp dir to store the config files
+    os.makedirs(TEMP_CONFIGS_DIR, exist_ok=True)
+
+    procs = []
+    proc_to_index = {}
+    # Run the Sacred experiment with the provided adapter function and config
+    for i, conf in enumerate(configs):
+        print(
+            "-" * 5
+            + "GRID RUN INFO: "
+            + f"Submitting run {i+1}/{total_num_params}"
+            + "-" * 5
+        )
+
+        temp_config_file = os.path.join(TEMP_CONFIGS_DIR, f"config_{i}.json")
+
+        print(f"Saving the following config to {temp_config_file}")
+        print(json.dumps(conf, indent=2))
+
+        # Save config to a temp file
+        with open(temp_config_file, "w") as file:
+            json.dump(conf, file)
+
+        slurm_command = (
+            f"sorcerun run {python_file} {temp_config_file} --auth_path {auth_path}"
+            + ("-m" if mongo else "")
+        )
+
+        slurm.add_cmd(slurm_command)
+        print(f"sbatch content:")
+        print(slurm)
+
+        cmd = "\n".join(
+            (
+                "sbatch" + " << EOF",
+                slurm.script(shell="/bin/sh", convert=True),
+                "EOF",
+            )
+        )
+        slurm.run_cmds = slurm.run_cmds[:-1]
+
+        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        procs.append(proc)
+
+        proc_to_index[proc] = i
+        
+
+        print(
+            "-" * 5
+            + "GRID RUN INFO: "
+            + f"Finished submitting run {i+1}/{total_num_params}"
+            + "-" * 5
+        )
+
+    total = len(procs)
+    completed = 0
+    try:
+        while procs:
+            for proc in procs[:]:  # Iterate over a copy of the list
+                if proc.poll() is not None:  # Check if subprocess has finished
+                    procs.remove(proc)  # Remove finished subprocess from list
+                    completed += 1
+                    print(f"Run index {proc_to_index[proc]+1} finished,\t{completed}/{total} runs completed")  # Update message
+            time.sleep(1)  # Wait a bit before checking again to reduce CPU usage
+    finally:
+        # Optional: ensure all subprocesses are terminated
+        for proc in procs:
+            proc.terminate()
+        print("All runs completed.")
 
     if post_process:
         # Post process grid and save xarray to netcdf
