@@ -14,20 +14,14 @@ Sorcerun also offers a CLI to help setup and manage a MongoDB observer for sacre
 
 It also has tools to run **grids** of experiments and then analyze results from experiment grids.
 
-TODO: add simple example
-
 # TODO
 
--   [ ] Utilities to forward ports via ssh
+-   [ ] Add example and documentation (top priority)
 -   [x] Grid run utilities via CLI
 -   [ ] More template adapters and generate them via CLI
     -   Specifically something that can track STDOUT and log metrics from STDOUT?
 -   [ ] Cleaner source file and other meta info tracking
 -   [x] General utilities with `incense` -- maybe build `streamlit` app separately?
 -   [x] Better logging for the mongod server
--   [ ] Add example and documentation
 -   [x] Change description to be simpler -- logged function calls
 -   [ ] Improve `grid_plotter` with more features for plot customization
--   [x] Get rid of MongoDB and just use FileStorage? All we need is a nice API to retrieve from FileStorage 
-    - Don't have to worry about port forwarding shenanigans then
--   [ ] Similarly, get rid of sacred too? all we are using is its logging stuff
