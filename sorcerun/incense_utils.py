@@ -1,3 +1,4 @@
+from .globals import GRID_OUTPUTS, RUNS_DIR
 import incense
 import os
 import json
@@ -8,9 +9,9 @@ import numpy as np
 import xarray as xr
 from tqdm import tqdm
 from pathlib import Path
-from .globals import GRID_OUTPUTS, RUNS_DIR
 
 FILESTORAGE_SPECIAL_DIRS = ["_sources", "_resources"]
+
 
 def get_incense_loader(authfile="sorcerun_auth.json"):
     with open(authfile, "r") as f:
@@ -25,7 +26,8 @@ def load_filesystem_expts_by_config_keys(runs_dir=RUNS_DIR, **kwargs):
     runs_dir = Path(runs_dir)
     configs = {
         run_dir.name: incense.experiment._load_json_from_path(run_dir / "config.json")
-        for run_dir in runs_dir.iterdir() if run_dir.name not in FILESTORAGE_SPECIAL_DIRS
+        for run_dir in runs_dir.iterdir()
+        if run_dir.name not in FILESTORAGE_SPECIAL_DIRS
     }
 
     # kwargs = {"grid_id": "2024-02-27-19-34-08"}
@@ -41,7 +43,9 @@ def load_filesystem_expts_by_config_keys(runs_dir=RUNS_DIR, **kwargs):
         )
     )
 
-    expts = [incense.experiment.FileSystemExperiment.from_run_dir(runs_dir / i) for i in ids]
+    expts = [
+        incense.experiment.FileSystemExperiment.from_run_dir(runs_dir / i) for i in ids
+    ]
 
     return expts
 
