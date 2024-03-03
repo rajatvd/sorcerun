@@ -11,7 +11,7 @@ setup(
         "pymongo",
         "pyyaml",
         "scikit-learn",
-        "incense @ git+https://github.com/rajatvd/incense",
+        "incense",
         "xarray",
         "tqdm",
         "streamlit",
