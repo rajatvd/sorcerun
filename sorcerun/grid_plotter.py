@@ -185,9 +185,9 @@ if st.button(f"Make {len(groups)} plots"):
             *[xarr.coords[dim].values for dim in dims_used_in_plot]
         ):
             d = {dim: coord[i] for i, dim in enumerate(dims_used_in_plot)}
-            ys = xarr.loc[d].squeeze()
+            ys = xarr.loc[d]
             for y_axis in y_axes:
-                y = ys.loc[dict(metric=y_axis)]
+                y = ys.loc[dict(metric=y_axis)].squeeze()
                 label = " ".join(
                     [f"{y_axis}", ", ".join([f"{k}={v}" for k, v in d.items()])]
                 )
