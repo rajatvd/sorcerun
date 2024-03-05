@@ -193,10 +193,11 @@ if st.button(f"Make {len(groups)} plots"):
                 )
 
                 # check if y is all nans or infs, if so, don't plot
-                to_plot = (
-                    y.isnull().all().item() or not (y == float("inf")).all().item()
+
+                dont_plot = (
+                    y.isnull().all().item() or (y == float("inf")).all().item()
                 )
-                if to_plot:
+                if not dont_plot:
                     plt.plot(x, y, label=label)
                     # add regression line slope
                     if len(x) > 1 and show_slope:
