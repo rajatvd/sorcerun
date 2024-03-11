@@ -20,7 +20,13 @@ def load_python_module(python_file):
     return module
 
 
-def run_sacred_experiment(adapter_func, config, auth_path=AUTH_FILE, use_mongo=True):
+def run_sacred_experiment(
+    adapter_func,
+    config,
+    auth_path=AUTH_FILE,
+    use_mongo=True,
+    file_storage_root=".",
+):
     experiment_name = getattr(adapter_func, "experiment_name", "sorcerun_experiment")
     ex = Experiment(experiment_name)
 
@@ -58,8 +64,9 @@ def run_sacred_experiment(adapter_func, config, auth_path=AUTH_FILE, use_mongo=T
     else:
         print("WARNING: Not using mongo observer (use_mongo=False was passed)")
 
-    os.makedirs(RUNS_DIR, exist_ok=True)
-    ex.observers.append(FileStorageObserver.create(RUNS_DIR))
+    runs_dir = os.path.join(file_storage_root, RUNS_DIR)
+    os.makedirs(runs_dir, exist_ok=True)
+    ex.observers.append(FileStorageObserver.create(runs_dir))
     ex.add_config(config)
 
     @ex.main

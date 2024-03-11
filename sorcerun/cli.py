@@ -8,7 +8,7 @@ from contextlib import ExitStack
 from .mongodb_utils import mongodb_server, init_mongodb
 from .sacred_utils import load_python_module, run_sacred_experiment
 from .incense_utils import squish_dict, unsquish_dict, process_and_save_grid_to_netcdf
-from .globals import AUTH_FILE, TEMP_CONFIGS_DIR
+from .globals import AUTH_FILE, TEMP_CONFIGS_DIR, FILE_STORAGE_ROOT
 
 
 @click.group()
@@ -19,6 +19,13 @@ def sorcerun():
 @sorcerun.command()
 @click.argument("python_file", type=click.Path(exists=True, dir_okay=False))
 @click.argument("config_file", type=click.Path(exists=True, dir_okay=False))
+@click.option(
+    "--file_root",
+    "-f",
+    default=FILE_STORAGE_ROOT,
+    type=click.Path(file_okay=False),
+    help="Root directory for file storage",
+)
 @click.option("--auth_path", default=AUTH_FILE, help="Path to sorcerun_auth.json file.")
 @click.option(
     "--mongo",
@@ -26,7 +33,7 @@ def sorcerun():
     is_flag=True,
     help="Use MongoObserver",
 )
-def run(python_file, config_file, auth_path, mongo):
+def run(python_file, config_file, file_root, auth_path, mongo):
     # Load the adapter function from the provided Python file
     adapter_module = load_python_module(python_file)
     if not hasattr(adapter_module, "adapter"):
@@ -57,7 +64,13 @@ def run(python_file, config_file, auth_path, mongo):
         )
 
     # Run the Sacred experiment with the provided adapter function and config
-    run_sacred_experiment(adapter_func, config, auth_path, use_mongo=mongo)
+    run_sacred_experiment(
+        adapter_func,
+        config,
+        auth_path,
+        use_mongo=mongo,
+        file_storage_root=file_root,
+    )
 
 
 @sorcerun.command()
@@ -68,6 +81,13 @@ def run(python_file, config_file, auth_path, mongo):
 @click.argument(
     "grid_config_file",
     type=click.Path(exists=True, dir_okay=False),
+)
+@click.option(
+    "--file_root",
+    "-f",
+    default=FILE_STORAGE_ROOT,
+    type=click.Path(file_okay=False),
+    help="Root directory for file storage",
 )
 @click.option(
     "--auth_path",
@@ -89,6 +109,7 @@ def run(python_file, config_file, auth_path, mongo):
 def grid_run(
     python_file,
     grid_config_file,
+    file_root,
     auth_path,
     post_process=False,
     mongo=False,
@@ -146,7 +167,13 @@ def grid_run(
         print("Running experiment with config:")
         print(json.dumps(conf, indent=2))
 
-        run_sacred_experiment(adapter_func, conf, auth_path, use_mongo=mongo)
+        run_sacred_experiment(
+            adapter_func,
+            conf,
+            auth_path,
+            use_mongo=mongo,
+            file_storage_root=file_root,
+        )
 
         if post_grid_hook is not None:
             print(f"Running post_grid_hook")
@@ -193,6 +220,13 @@ def grid_run(
     type=click.Path(exists=True, dir_okay=False),
 )
 @click.option(
+    "--file_root",
+    "-f",
+    default=FILE_STORAGE_ROOT,
+    type=click.Path(file_okay=False),
+    help="Root directory for file storage",
+)
+@click.option(
     "--auth_path",
     default=AUTH_FILE,
     help="Path to sorcerun_auth.json file.",
@@ -213,6 +247,7 @@ def grid_slurm(
     python_file,
     grid_config_file,
     slurm_config_file,
+    file_root,
     auth_path,
     post_process=False,
     mongo=False,
@@ -262,7 +297,8 @@ def grid_slurm(
     slurm.add_arguments(wait=True)
 
     # make a temp dir to store the config files
-    os.makedirs(TEMP_CONFIGS_DIR, exist_ok=True)
+    temp_configs_dir = os.path.join(file_root, TEMP_CONFIGS_DIR)
+    os.makedirs(temp_configs_dir, exist_ok=True)
 
     procs = []
     proc_to_index = {}
@@ -275,7 +311,7 @@ def grid_slurm(
             + "-" * 5
         )
 
-        temp_config_file = os.path.join(TEMP_CONFIGS_DIR, f"config_{i}.json")
+        temp_config_file = os.path.join(temp_configs_dir, f"config_{i}.json")
 
         print(f"Saving the following config to {temp_config_file}")
         print(json.dumps(conf, indent=2))
@@ -285,7 +321,7 @@ def grid_slurm(
             json.dump(conf, file)
 
         slurm_command = (
-            f"sorcerun run {python_file} {temp_config_file} --auth_path {auth_path}"
+            f"sorcerun run {python_file} {temp_config_file} --file_root {file_root} --auth_path {auth_path}"
             + ("-m" if mongo else "")
         )
 
@@ -306,7 +342,6 @@ def grid_slurm(
         procs.append(proc)
 
         proc_to_index[proc] = i
-        
 
         print(
             "-" * 5
@@ -323,7 +358,9 @@ def grid_slurm(
                 if proc.poll() is not None:  # Check if subprocess has finished
                     procs.remove(proc)  # Remove finished subprocess from list
                     completed += 1
-                    print(f"Run index {proc_to_index[proc]+1} finished,\t{completed}/{total} runs completed")  # Update message
+                    print(
+                        f"Run index {proc_to_index[proc]+1} finished,\t{completed}/{total} runs completed"
+                    )  # Update message
             time.sleep(1)  # Wait a bit before checking again to reduce CPU usage
     finally:
         # Optional: ensure all subprocesses are terminated
