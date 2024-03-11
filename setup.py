@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="sorcerun",
-    version="0.2.18",
+    version="0.2.19",
     packages=find_packages(),
     install_requires=[
         "click",
