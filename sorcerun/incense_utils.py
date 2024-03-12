@@ -243,12 +243,27 @@ def exps_to_xarray(exps, exclude_keys=["seed"]):
             vals = sorted(list(v))
         coords[k] = vals
 
+    # remove axes of size 1 (except metric and step)
+
+    axes_copy = axes.copy()
+    size_one_axes = []
+    for a in axes_copy:
+        if a == "metric" or a == "step":
+            continue
+        if len(coords[a]) == 1:
+            print(f"Removing axis {a} because it has size 1")
+            axes.remove(a)
+            axes_without_metric.remove(a)
+            coords.pop(a)
+            size_one_axes.append(a)
+
     coords_without_metric = coords.copy()
     coords_without_metric.pop("metric")
     coords_without_metric.pop("step")
 
     # create empty xarrays
     shape = tuple(len(coords[a]) for a in axes)
+    # import ipdb; ipdb.set_trace()
     metric_data = np.empty(shape, dtype=np.float32)
     metric_data.fill(np.nan)
     metrics_arr = xr.DataArray(
@@ -270,6 +285,7 @@ def exps_to_xarray(exps, exclude_keys=["seed"]):
     for e in tqdm(exps[::-1], desc="Filling in metrics"):
         e_cfg_index = squish_dict(thaw(e.config))
         [e_cfg_index.pop(k) for k in exclude_keys]
+        [e_cfg_index.pop(k) for k in size_one_axes]
 
         # convert values of type list to tuple
         for k, v in e_cfg_index.items():
