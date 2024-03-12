@@ -305,10 +305,10 @@ def print_file_size(file_path):
         print(f"The size of '{file_path}' is: {size_in_bytes / 1024**3:.2f} GB")
 
 
-def process_and_save_grid_to_netcdf(gid):
+def process_and_save_grid_to_netcdf(gid, runs_dir=RUNS_DIR):
     # loader = get_incense_loader()
     # grid_exps = loader.find_by_config_key("grid_id", gid)
-    grid_exps = load_filesystem_expts_by_config_keys(grid_id=gid)
+    grid_exps = load_filesystem_expts_by_config_keys(grid_id=gid, runs_dir=runs_dir)
     e = grid_exps[0]
 
     print(f"Found {len(grid_exps)} experiments with grid_id {gid}")

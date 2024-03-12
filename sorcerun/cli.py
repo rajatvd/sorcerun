@@ -8,7 +8,7 @@ from contextlib import ExitStack
 from .mongodb_utils import mongodb_server, init_mongodb
 from .sacred_utils import load_python_module, run_sacred_experiment
 from .incense_utils import squish_dict, unsquish_dict, process_and_save_grid_to_netcdf
-from .globals import AUTH_FILE, TEMP_CONFIGS_DIR, FILE_STORAGE_ROOT
+from .globals import AUTH_FILE, TEMP_CONFIGS_DIR, FILE_STORAGE_ROOT, RUNS_DIR
 
 
 @click.group()
@@ -197,7 +197,9 @@ def grid_run(
         if same_gid:
             print(f"All configs have the same grid_id: {gid}")
             print(f"Processing and saving grid to netcdf")
-            process_and_save_grid_to_netcdf(gid)
+            process_and_save_grid_to_netcdf(
+                gid, runs_dir=os.path.join(file_root, RUNS_DIR)
+            )
         else:
             print(
                 f"Configs do not have the same grid_id."
@@ -379,7 +381,9 @@ def grid_slurm(
         if same_gid:
             print(f"All configs have the same grid_id: {gid}")
             print(f"Processing and saving grid to netcdf")
-            process_and_save_grid_to_netcdf(gid)
+            process_and_save_grid_to_netcdf(
+                gid, runs_dir=os.path.join(file_root, RUNS_DIR)
+            )
         else:
             print(
                 f"Configs do not have the same grid_id."
@@ -389,9 +393,16 @@ def grid_slurm(
 
 @sorcerun.command()
 @click.argument("grid_id", type=str)
-def grid_to_netcdf(grid_id):
+@click.option(
+    "--file_root",
+    "-f",
+    default=FILE_STORAGE_ROOT,
+    type=click.Path(file_okay=False),
+    help="Root directory for file storage",
+)
+def grid_to_netcdf(grid_id, file_root):
     click.echo(f"Processing and saving grid with grid_id {grid_id} to netcdf")
-    process_and_save_grid_to_netcdf(grid_id)
+    process_and_save_grid_to_netcdf(grid_id, runs_dir=os.path.join(file_root, RUNS_DIR))
 
 
 @sorcerun.group()
