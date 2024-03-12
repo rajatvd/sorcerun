@@ -197,9 +197,7 @@ def grid_run(
         if same_gid:
             print(f"All configs have the same grid_id: {gid}")
             print(f"Processing and saving grid to netcdf")
-            process_and_save_grid_to_netcdf(
-                gid, runs_dir=os.path.join(file_root, RUNS_DIR)
-            )
+            process_and_save_grid_to_netcdf(gid, file_root=file_root)
         else:
             print(
                 f"Configs do not have the same grid_id."
@@ -381,9 +379,7 @@ def grid_slurm(
         if same_gid:
             print(f"All configs have the same grid_id: {gid}")
             print(f"Processing and saving grid to netcdf")
-            process_and_save_grid_to_netcdf(
-                gid, runs_dir=os.path.join(file_root, RUNS_DIR)
-            )
+            process_and_save_grid_to_netcdf(gid, file_root=file_root)
         else:
             print(
                 f"Configs do not have the same grid_id."
@@ -402,7 +398,7 @@ def grid_slurm(
 )
 def grid_to_netcdf(grid_id, file_root):
     click.echo(f"Processing and saving grid with grid_id {grid_id} to netcdf")
-    process_and_save_grid_to_netcdf(grid_id, runs_dir=os.path.join(file_root, RUNS_DIR))
+    process_and_save_grid_to_netcdf(grid_id, file_root=file_root)
 
 
 @sorcerun.group()

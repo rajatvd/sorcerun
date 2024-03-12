@@ -1,4 +1,4 @@
-from .globals import GRID_OUTPUTS, RUNS_DIR
+from .globals import GRID_OUTPUTS, RUNS_DIR, FILE_STORAGE_ROOT
 import incense
 import os
 import json
@@ -305,10 +305,10 @@ def print_file_size(file_path):
         print(f"The size of '{file_path}' is: {size_in_bytes / 1024**3:.2f} GB")
 
 
-def process_and_save_grid_to_netcdf(gid, runs_dir=RUNS_DIR):
+def process_and_save_grid_to_netcdf(gid, file_root=FILE_STORAGE_ROOT):
     # loader = get_incense_loader()
     # grid_exps = loader.find_by_config_key("grid_id", gid)
-    grid_exps = load_filesystem_expts_by_config_keys(grid_id=gid, runs_dir=runs_dir)
+    grid_exps = load_filesystem_expts_by_config_keys(grid_id=gid, runs_dir=os.path.join(file_root, RUNS_DIR))
     e = grid_exps[0]
 
     print(f"Found {len(grid_exps)} experiments with grid_id {gid}")
@@ -316,7 +316,7 @@ def process_and_save_grid_to_netcdf(gid, runs_dir=RUNS_DIR):
     grid_exps_xr, grid_metrics_xr = exps_to_xarray(grid_exps)
     metrics_reduced_xr = grid_metrics_xr
 
-    save_dir = f"{GRID_OUTPUTS}/{gid}"
+    save_dir = f"{file_root}/{GRID_OUTPUTS}/{gid}"
     os.makedirs(save_dir, exist_ok=True)
 
     netcdf_save_path = f"{save_dir}/{gid}.nc"
