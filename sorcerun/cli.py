@@ -10,10 +10,24 @@ from .sacred_utils import load_python_module, run_sacred_experiment
 from .incense_utils import squish_dict, unsquish_dict, process_and_save_grid_to_netcdf
 from .globals import AUTH_FILE, TEMP_CONFIGS_DIR, FILE_STORAGE_ROOT, RUNS_DIR
 
+import sys, ipdb, traceback
+
+
+def info(type, value, tb):
+    traceback.print_exception(type, value, tb)
+    ipdb.pm()
+
 
 @click.group()
-def sorcerun():
-    pass
+@click.option(
+    "--debug",
+    "-d",
+    is_flag=True,
+    help="debug",
+)
+def sorcerun(debug):
+    if debug:
+        sys.excepthook = info
 
 
 @sorcerun.command()
