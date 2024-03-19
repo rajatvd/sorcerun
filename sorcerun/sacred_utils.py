@@ -75,7 +75,4 @@ def run_sacred_experiment(
         result = adapter_func(_config, _run)
         return result
 
-    try:
-        ex.run()
-    except:
-        traceback.print_exc()
+    ex.run()
