@@ -188,26 +188,38 @@ if st.button(f"Make {len(groups)} plots"):
             d = {dim: coord[i] for i, dim in enumerate(dims_used_in_plot)}
             ys = xarr.loc[d]
             for y_axis in y_axes:
-                y = ys.loc[dict(metric=y_axis)].squeeze()
+                y = ys.loc[dict(metric=y_axis)].squeeze().to_numpy()
                 label = " ".join(
                     [f"{y_axis}", ", ".join([f"{k}={v}" for k, v in d.items()])]
                 )
 
                 # check if y is all nans or infs, if so, don't plot
+                good_inds = np.isfinite(y)
 
-                dont_plot = (
-                    y.isnull().all().item() or (y == float("inf")).all().item()
-                )
+                # dont_plot = y.isnull().all().item() or (y == float("inf")).all().item()
+                dont_plot = not np.any(good_inds)
                 if not dont_plot:
-                    plt.plot(x, y, '-o', label=label)
+                    plt.plot(x, y, "-o", label=label)
                     # add regression line slope
                     if len(x) > 1 and show_slope:
                         x_to_regress = np.log(x) if log_x else x
                         y_to_regress = np.log(y) if log_y else y
-                        # slope, intercept = np.polyfit(x_to_regress, y_to_regress, 1)
-                        slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(
-                            x_to_regress, y_to_regress
+
+                        # remove nans and infs
+                        keep_inds = np.isfinite(x_to_regress) & np.isfinite(
+                            y_to_regress
                         )
+                        x_to_regress = x_to_regress[np.where(keep_inds)]
+                        y_to_regress = y_to_regress[np.where(keep_inds)]
+
+                        # slope, intercept = np.polyfit(x_to_regress, y_to_regress, 1)
+                        (
+                            slope,
+                            intercept,
+                            r_value,
+                            p_value,
+                            std_err,
+                        ) = scipy.stats.linregress(x_to_regress, y_to_regress)
                         plt.text(
                             x[-1],
                             y[-1],
