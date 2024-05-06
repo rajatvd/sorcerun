@@ -6,6 +6,7 @@ import os
 import xarray as xr
 import matplotlib.pyplot as plt
 import streamlit as st
+import scipy.stats
 
 st.title("Grid Plotter")
 # show current working directory
@@ -198,16 +199,19 @@ if st.button(f"Make {len(groups)} plots"):
                     y.isnull().all().item() or (y == float("inf")).all().item()
                 )
                 if not dont_plot:
-                    plt.plot(x, y, label=label)
+                    plt.plot(x, y, '-o', label=label)
                     # add regression line slope
                     if len(x) > 1 and show_slope:
                         x_to_regress = np.log(x) if log_x else x
                         y_to_regress = np.log(y) if log_y else y
-                        slope, intercept = np.polyfit(x_to_regress, y_to_regress, 1)
+                        # slope, intercept = np.polyfit(x_to_regress, y_to_regress, 1)
+                        slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(
+                            x_to_regress, y_to_regress
+                        )
                         plt.text(
                             x[-1],
                             y[-1],
-                            f"Slope: {slope:.7f}",
+                            f"Slope: {slope:.7f}, $r^2$: {r_value**2:.7f}",
                             horizontalalignment="right",
                             verticalalignment="top",
                         )
