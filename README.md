@@ -16,13 +16,9 @@ It also has tools to run **grids** of experiments and then analyze results from 
 
 # TODO
 
--   [ ] Add example and documentation (top priority)
--   [ ] Fix the incense version dependency for `FileStorageObserver`
+-   [x] Add example and documentation (top priority)
+    -   [ ] Document the JL example
 -   [ ] Add ability to add and edit tags to `grid_plotter` to filter experiments
--   [x] Grid run utilities via CLI
--   [x] More template adapters and generate them via CLI
--   [ ] Cleaner source file and other meta info tracking
--   [x] General utilities with `incense` -- maybe build `streamlit` app separately?
--   [x] Better logging for the mongod server
--   [x] Change description to be simpler -- logged function calls
 -   [ ] Improve `grid_plotter` with more features for plot customization
+-   [ ] Fix the incense version dependency for `FileStorageObserver`
+-   [ ] Cleaner source file and other meta info tracking
