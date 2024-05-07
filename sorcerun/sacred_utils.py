@@ -1,13 +1,15 @@
-from sacred import Experiment
+from sacred import Experiment, SETTINGS
 import pymongo
 import traceback
 from sacred.observers import MongoObserver, FileStorageObserver
+from sacred.utils import apply_backspaces_and_linefeeds
 import importlib
 import json
 from .globals import AUTH_FILE, RUNS_DIR
 import sys
 import os
 
+SETTINGS.CAPTURE_MODE = "sys"
 
 def load_python_module(python_file):
     file_dir = os.path.dirname(os.path.abspath(python_file))
@@ -29,6 +31,7 @@ def run_sacred_experiment(
 ):
     experiment_name = getattr(adapter_func, "experiment_name", "sorcerun_experiment")
     ex = Experiment(experiment_name)
+    ex.captured_out_filter = apply_backspaces_and_linefeeds
 
     # Read auth_data from auth_path
     if use_mongo:
@@ -76,3 +79,18 @@ def run_sacred_experiment(
         return result
 
     ex.run()
+
+
+class DummyRun():
+    def __init__(self):
+        pass
+
+    def to_dict(self):
+        pass
+
+    def log_scalar(self, key, value, step=0):
+        pass
+
+    def add_artifact(self, filename, name):
+        pass
+
