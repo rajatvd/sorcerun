@@ -7,7 +7,7 @@ setup(
     install_requires=[
         "click",
         # "sacred @ git+https://github.com/rajatvd/sacred.git",
-        "sacred==0.8.4",
+        "sacred",
         "pymongo",
         "pyyaml",
         "scikit-learn",
