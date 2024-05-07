@@ -8,7 +8,13 @@ from contextlib import ExitStack
 from .mongodb_utils import mongodb_server, init_mongodb
 from .sacred_utils import load_python_module, run_sacred_experiment
 from .incense_utils import squish_dict, unsquish_dict, process_and_save_grid_to_netcdf
-from .globals import AUTH_FILE, TEMP_CONFIGS_DIR, FILE_STORAGE_ROOT, RUNS_DIR
+from .globals import (
+    AUTH_FILE,
+    TEMP_CONFIGS_DIR,
+    FILE_STORAGE_ROOT,
+    RUNS_DIR,
+    TEMPLATE_FILES,
+)
 
 import sys, ipdb, traceback
 
@@ -28,6 +34,24 @@ def info(type, value, tb):
 def sorcerun(debug):
     if debug:
         sys.excepthook = info
+
+
+@sorcerun.command()
+def template():
+    this_file_path = os.path.abspath(__file__)
+    this_dir = os.path.dirname(this_file_path)
+
+    for file in TEMPLATE_FILES:
+        # check if file already exists in current directory
+        if os.path.exists(file):
+            click.echo(f"File {file} already exists. Skipping creation.")
+            continue
+
+        path_to_template_file = os.path.join(this_dir, file)
+        with open(path_to_template_file, "r") as f:
+            click.echo(f"Creating file: {file}")
+            with open(file, "w") as new_f:
+                new_f.write(f.read())
 
 
 @sorcerun.command()
