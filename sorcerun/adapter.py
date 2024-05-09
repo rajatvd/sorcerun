@@ -34,6 +34,7 @@ def adapter(config, _run):
     )
     return output
 
+adapter.experiment_name = "jl_lemma_test"
 
 if __name__ == "__main__":
     from config import config
