@@ -18,7 +18,6 @@ def adapter(config, _run):
     S = np.random.randn(k, d) / np.sqrt(k)
 
     # sketch the data
-
     Y = S @ X
 
     # measure distortion for each data point
@@ -33,6 +32,7 @@ def adapter(config, _run):
         f"mean distortion: {distortions.mean()}, max distortion: {distortions.max()}"
     )
     return output
+
 
 adapter.experiment_name = "jl_lemma_test"
 
