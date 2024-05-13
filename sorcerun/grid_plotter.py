@@ -15,19 +15,56 @@ st.write(f"Current working directory: `{working_dir}`")
 
 st.title("Settings")
 
+# Checkbox to decide whether to show all grid ids or only the ones with tags
+show_all_grids = not st.checkbox("Show only tagged grids", value=False)
 
-# Extract all grid ids (they are the names of the subdirectories in GRID_OUTPUTS)
-grid_ids = [
-    f for f in os.listdir(GRID_OUTPUTS) if os.path.isdir(os.path.join(GRID_OUTPUTS, f))
-]
+# Extract grid ids
+name_to_gid = {}
+for f in os.listdir(GRID_OUTPUTS):
+    if os.path.isdir(os.path.join(GRID_OUTPUTS, f)):
+        gid = f
+        tags_file = os.path.join(GRID_OUTPUTS, gid, f"{gid}-tags.txt")
+
+        tags = ""
+        if os.path.exists(tags_file):
+            with open(tags_file, "r") as f:
+                tags = f" tags: {f.read().strip()}"
+
+        if show_all_grids or tags:
+            name_to_gid[f"{gid}{tags}"] = gid
+
 
 # Select a grid id
-grid_id = st.selectbox("Choose a Grid ID", grid_ids)
+name = st.selectbox("Choose a Grid ID", list(name_to_gid.keys()))
+grid_id = name_to_gid[name]
+
+# Add a text box to modify tags for the selected grid id
+tags_file = os.path.join(GRID_OUTPUTS, grid_id, f"{grid_id}-tags.txt")
+tags = ""
+if os.path.exists(tags_file):
+    with open(tags_file, "r") as f:
+        tags = f.read().strip()
+
+new_tags = st.text_input("Tags", value=tags)
+
+# Add a button to save the tags
+if st.button("Save tags"):
+    # delete the tags file if the new tags are empty
+    if not new_tags:
+        if os.path.exists(tags_file):
+            os.remove(tags_file)
+    else:
+        with open(tags_file, "w") as f:
+            f.write(new_tags)
+    st.rerun()
+
+st.write(f"Selected grid id: `{grid_id}`")
 
 
 # Load the netcdf file for the selected grid id as an xarray
 grid_output_dir = os.path.join(GRID_OUTPUTS, grid_id)
 netcdf_file = os.path.join(grid_output_dir, f"{grid_id}.nc")
+
 data = xr.open_dataarray(netcdf_file)
 
 # get dims with more than 1 coordinate
