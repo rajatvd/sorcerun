@@ -161,6 +161,8 @@ with st.container():
 # Remaining dims
 remaining_dims = sorted(list(set(new_dims) - set([x_axis, "metric"])))
 
+# Choose a style for the plot
+style = st.text_input("Line style", value="o-")
 
 # Choose plot dimensions to include within a single plot
 st.subheader("Choose dimensions that are kept fixed in each plot")
@@ -236,7 +238,7 @@ if st.button(f"Make {len(groups)} plots"):
                 # dont_plot = y.isnull().all().item() or (y == float("inf")).all().item()
                 dont_plot = not np.any(good_inds)
                 if not dont_plot:
-                    plt.plot(x, y, "-o", label=label)
+                    plt.plot(x, y, style, label=label)
                     # add regression line slope
                     if len(x) > 1 and show_slope:
                         x_to_regress = np.log(x) if log_x else x
