@@ -179,6 +179,9 @@ st.write(dims_used_in_plot)
 # Boolean on whether to show regression line slope
 show_slope = st.checkbox("Show regression line slope", value=False)
 
+# Boolean on whether to have axis grids
+axis_grids = st.checkbox("Show axis grids", value=True)
+
 # Boolean on whether to save the plots
 save_plots = st.checkbox("Save plots", value=False)
 
@@ -273,10 +276,20 @@ if st.button(f"Make {len(groups)} plots"):
             plt.yscale("log")
         plt.ylabel(y_label)
         plt.xlabel(x_label)
-        plt.legend()
+
+        # place legend outside plot to the right using axis
+        leg = fig.legend(loc="center left", bbox_to_anchor=(0.92, 0.5))
+        # plt.legend()
+
+        if axis_grids:
+            plt.grid(True)
 
         # display plot in streamlit
+        if save_plots:
+            fig.savefig(
+                f"{save_dir}/{i:03d}--{title}.{save_type}",
+                bbox_extra_artists=[leg],
+                bbox_inches="tight",
+            )
         st.write(f"Plot {i+1}: {title}")
         st.pyplot(fig)
-        if save_plots:
-            plt.savefig(f"{save_dir}/{i:03d}--{title}.{save_type}")
