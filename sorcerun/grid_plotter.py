@@ -218,6 +218,7 @@ if st.button(f"Make {len(groups)} plots"):
                 for key, val in zip(other_dims, group)
                 if key in title_keys
             ]
+            + [f"metrics={'-'.join(y_axes)}"]
         )
         xarr = out[group]
 
