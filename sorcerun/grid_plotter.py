@@ -86,11 +86,13 @@ reduce_options = [
 # (if the length of the coordinate is greater than 10, then it is shortened)
 MAX_LEN = 100
 shortened_coords = {
-    dim: str(data.coords[dim].values)
-    if len(str(data.coords[dim].values)) < MAX_LEN
-    else str(data.coords[dim].values)[: MAX_LEN // 2]
-    + "..."
-    + str(data.coords[dim].values)[-MAX_LEN // 2 :]
+    dim: (
+        str(data.coords[dim].values)
+        if len(str(data.coords[dim].values)) < MAX_LEN
+        else str(data.coords[dim].values)[: MAX_LEN // 2]
+        + "..."
+        + str(data.coords[dim].values)[-MAX_LEN // 2 :]
+    )
     for dim in dims
 }
 
@@ -99,17 +101,19 @@ st.write("Select a reduction option for each dimension")
 # create a dictionary of reduction options for each dimension
 # if the dim is `repeat`, then the default reduction option is `mean` by default
 reduce_options_dict = {
-    dim: st.radio(
-        f"`{dim}`: {shortened_coords[dim]}",
-        reduce_options,
-        horizontal=True,
-    )
-    if dim != "repeat"
-    else st.radio(
-        f"`{dim}`: {shortened_coords[dim]}",
-        reduce_options,
-        horizontal=True,
-        index=1,
+    dim: (
+        st.radio(
+            f"`{dim}`: {shortened_coords[dim]}",
+            reduce_options,
+            horizontal=True,
+        )
+        if dim != "repeat"
+        else st.radio(
+            f"`{dim}`: {shortened_coords[dim]}",
+            reduce_options,
+            horizontal=True,
+            index=1,
+        )
     )
     for dim in dims
 }
@@ -233,9 +237,9 @@ if st.button(f"Make {len(groups)} plots"):
             ys = xarr.loc[d]
             for y_axis in y_axes:
                 y = ys.loc[dict(metric=y_axis)].squeeze().to_numpy()
-                label = " ".join(
-                    [f"{y_axis}", ", ".join([f"{k}={v}" for k, v in d.items()])]
-                )
+                label = ", ".join([f"{k}={v}" for k, v in d.items()])
+                if len(y_axes) > 1:
+                    label = y_axis + " " + label
 
                 # check if y is all nans or infs, if so, don't plot
                 good_inds = np.isfinite(y)
