@@ -18,7 +18,7 @@ It also has tools to run **grids** of experiments and then analyze results from 
 
 -   [x] Add example and documentation (top priority)
     -   [ ] Document the JL example
--   [ ] Add ability to add and edit tags to `grid_plotter` to filter experiments
+-   [x] Add ability to add and edit tags to `grid_plotter` to filter experiments
 -   [ ] Improve `grid_plotter` with more features for plot customization
 -   [ ] Fix the incense version dependency for `FileStorageObserver`
 -   [ ] Cleaner source file and other meta info tracking
