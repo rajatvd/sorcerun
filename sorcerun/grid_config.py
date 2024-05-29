@@ -10,7 +10,7 @@ short_length = 8
 short_hash = commit_hash[:short_length]
 time_str = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
 extra = "jlTest"
-grid_id = f"{time_str}-{extra}-{short_hash}-dirty={dirty}"
+grid_id = f"{time_str}_{extra}_{short_hash}_dirty={dirty}"
 
 ns = (np.logspace(1, 3, 20, dtype=int)).tolist()
 ds = (np.logspace(1, 3, 3, dtype=int)).tolist()
