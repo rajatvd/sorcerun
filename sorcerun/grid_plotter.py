@@ -135,9 +135,12 @@ st.subheader("Metrics")
 st.write(metric_names)
 
 st.subheader("Choose axes for each plot")
+xlim = None
+ylim = None
 # Choose an x and y axis from both dimensions and metrics
 with st.container():
-    col1x, col2x, col3x = st.columns(3)
+    # add a column for setting xlim and ylim
+    col1x, col2x, col3x, col4x = st.columns(4)
     with col1x:
         x_axis = st.selectbox(
             "X axis",
@@ -152,7 +155,12 @@ with st.container():
     with col3x:
         x_label = st.text_input("X label", value=x_axis)
 
-    col1y, col2y, col3y = st.columns(3)
+    with col4x:
+        xlim = st.text_input("X limits", value="")
+        if xlim:
+            xlim = [float(x) for x in xlim.split(",")]
+
+    col1y, col2y, col3y, col4y = st.columns(4)
     # Choose multiple y axes from the metrics
     with col1y:
         y_axes = st.multiselect("Y axis", metric_names)
@@ -162,6 +170,11 @@ with st.container():
         log_y = st.checkbox("Log scale y axis", value=False)
     with col3y:
         y_label = st.text_input("Y label", value="metric")
+    with col4y:
+        ylim = st.text_input("Y limits", value="")
+        if ylim:
+            ylim = [float(y) for y in ylim.split(",")]
+
 # Remaining dims
 remaining_dims = sorted(list(set(new_dims) - set([x_axis, "metric"])))
 
@@ -282,6 +295,10 @@ if st.button(f"Make {len(groups)} plots"):
             plt.yscale("log")
         plt.ylabel(y_label)
         plt.xlabel(x_label)
+        if xlim:
+            plt.xlim(xlim)
+        if ylim:
+            plt.ylim(ylim)
 
         # place legend outside plot to the right using axis
         leg = fig.legend(loc="center left", bbox_to_anchor=(0.92, 0.5))
