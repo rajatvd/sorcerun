@@ -9,6 +9,7 @@ import numpy as np
 import xarray as xr
 from tqdm import tqdm
 from pathlib import Path
+from prettytable import PrettyTable
 
 FILESTORAGE_SPECIAL_DIRS = ["_sources", "_resources"]
 
@@ -256,6 +257,13 @@ def exps_to_xarray(exps, exclude_keys=["seed"]):
             axes_without_metric.remove(a)
             coords.pop(a)
             size_one_axes.append(a)
+
+    # print out the axes and their sizes
+    t = PrettyTable(["Axis", "Size"])
+    for a in axes:
+        t.add_row([a, len(coords[a])])
+    t.align = "l"
+    print(t)
 
     coords_without_metric = coords.copy()
     coords_without_metric.pop("metric")

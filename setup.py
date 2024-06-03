@@ -15,7 +15,8 @@ setup(
         "xarray",
         "tqdm",
         "streamlit",
-        "ipdb"
+        "ipdb",
+        "prettytable",
     ],
     entry_points="""
         [console_scripts]
