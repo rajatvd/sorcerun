@@ -350,8 +350,8 @@ def process_and_save_grid_to_netcdf(gid, file_root=FILE_STORAGE_ROOT):
     print(f"Saving to {netcdf_save_path}")
 
     # convert coordinate values that are tuples to strings to avoid serialization issues
-    old_coords = metrics_reduced_xr.coords.copy()
-    for k, v in old_coords.items():
+    old_coords = [(k, v) for k, v in metrics_reduced_xr.coords.items()]
+    for k, v in old_coords:
         if any(type(x) == tuple for x in v.values):
             print(f"Converting coordinate values of {k} to str")
             metrics_reduced_xr.coords[k] = [str(x) for x in v.values]
