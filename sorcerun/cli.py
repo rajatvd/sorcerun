@@ -15,7 +15,9 @@ from .globals import (
     RUNS_DIR,
     TEMPLATE_FILES,
 )
+from .slurm_utils import Job, update_jobs, aggregate_states
 
+from prettytable import PrettyTable
 import sys, ipdb, traceback
 
 
@@ -332,14 +334,13 @@ def grid_slurm(
             f"slurm config file at {slurm_config_file} does not have an attribute named slurm"
         )
     slurm = slurm_module.slurm
-    slurm.add_arguments(wait=True)
+    # slurm.add_arguments(wait=True)
 
     # make a temp dir to store the config files
     temp_configs_dir = os.path.join(file_root, TEMP_CONFIGS_DIR)
     os.makedirs(temp_configs_dir, exist_ok=True)
 
-    procs = []
-    proc_to_index = {}
+    jobs = []
     # Run the Sacred experiment with the provided adapter function and config
     for i, conf in enumerate(configs):
         print(
@@ -376,10 +377,13 @@ def grid_slurm(
         )
         slurm.run_cmds = slurm.run_cmds[:-1]
 
-        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-        procs.append(proc)
+        # proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        # run the command and get the output
+        out = subprocess.check_output(cmd, shell=True).decode("utf-8").strip()
 
-        proc_to_index[proc] = i
+        # extract slurm job id from out
+        job_id = int(out.split()[-1])
+        jobs.append(Job(job_id))
 
         print(
             "-" * 5
@@ -388,23 +392,24 @@ def grid_slurm(
             + "-" * 5
         )
 
-    total = len(procs)
-    completed = 0
-    try:
-        while procs:
-            for proc in procs[:]:  # Iterate over a copy of the list
-                if proc.poll() is not None:  # Check if subprocess has finished
-                    procs.remove(proc)  # Remove finished subprocess from list
-                    completed += 1
-                    print(
-                        f"Run index {proc_to_index[proc]+1} finished,\t{completed}/{total} runs completed"
-                    )  # Update message
-            time.sleep(1)  # Wait a bit before checking again to reduce CPU usage
-    finally:
-        # Optional: ensure all subprocesses are terminated
-        for proc in procs:
-            proc.terminate()
-        print("All runs completed.")
+    print(f"Submitted {len(jobs)} jobs to slurm")
+
+    states = {}
+    first_iter = True
+    while states.get("PENDING", 0) + states.get("RUNNING", 0) > 0 or first_iter:
+        first_iter = False
+        time.sleep(10)
+        update_jobs(jobs)
+        new_states = aggregate_states(jobs)
+        if new_states != states:
+            states = new_states
+            t = PrettyTable(["Job State", "Count"])
+            for state, count in states.items():
+                t.add_row([state, count])
+            t.align = "l"
+            print(t)
+
+    print("All jobs have completed")
 
     if post_process:
         # Post process grid and save xarray to netcdf
