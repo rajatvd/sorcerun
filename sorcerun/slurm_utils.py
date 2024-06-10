@@ -48,22 +48,24 @@ def aggregate_states(jobs):
 
 
 def poll_jobs(jobs, poll_interval=10):
+    print(f"Polling {len(jobs)} jobs every {poll_interval} seconds\n")
+
     update_jobs(jobs)
-    states = OrderedDict()
-    new_states = aggregate_states(jobs)
-    first_iter = True
-    print(f"Polling {len(jobs)} jobs every {poll_interval} seconds")
-    while states.get("PENDING", 0) + states.get("RUNNING", 0) > 0 or first_iter:
-        first_iter = False
-        if new_states != states:
-            states = new_states
-            t = PrettyTable(["Job State", "Count"])
-            for state, count in states.items():
-                t.add_row([state, count])
-            t.align = "l"
-            print(t)
+    states = aggregate_states(jobs)
+    while states.get("PENDING", 0) + states.get("RUNNING", 0) > 0:
+        t = PrettyTable(["Job State", "Count"])
+        for state, count in states.items():
+            t.add_row([state, count])
+        t.align = "l"
+        time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        print("-" * 40)
+        print(f"Job states at {time_str} :")
+        print(t)
+        print("-" * 40)
+
         time.sleep(poll_interval)
+
         update_jobs(jobs)
-        new_states = aggregate_states(jobs)
+        states = aggregate_states(jobs)
 
     print("All jobs have finished")
