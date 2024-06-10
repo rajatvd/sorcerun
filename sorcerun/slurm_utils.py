@@ -1,4 +1,5 @@
 import subprocess
+from collections import OrderedDict
 from prettytable import PrettyTable
 import time
 
@@ -34,7 +35,11 @@ def update_jobs(jobs):
 
 
 def aggregate_states(jobs):
-    states = {}
+    states = OrderedDict()
+    states["PENDING"] = 0
+    states["RUNNING"] = 0
+    states["COMPLETED"] = 0
+
     for job in jobs:
         if job.job_state not in states:
             states[job.job_state] = 0
@@ -44,7 +49,7 @@ def aggregate_states(jobs):
 
 def poll_jobs(jobs, poll_interval=10):
     update_jobs(jobs)
-    states = {}
+    states = OrderedDict()
     new_states = aggregate_states(jobs)
     first_iter = True
     print(f"Polling {len(jobs)} jobs every {poll_interval} seconds")
