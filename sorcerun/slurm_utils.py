@@ -47,6 +47,7 @@ def aggregate_states(jobs):
     return states
 
 
+# TODO: make this print tqdm style, with an updating table/progress bar
 def poll_jobs(jobs, poll_interval=10):
     print(f"Polling {len(jobs)} jobs every {poll_interval} seconds\n")
 
@@ -59,7 +60,7 @@ def poll_jobs(jobs, poll_interval=10):
         t.align = "l"
         time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         print("-" * 40)
-        print(f"Job states at {time_str} :")
+        print(f"Job states at {time_str}")
         print(t)
         print("-" * 40)
 
