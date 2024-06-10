@@ -12,10 +12,10 @@ from .globals import (
     AUTH_FILE,
     TEMP_CONFIGS_DIR,
     FILE_STORAGE_ROOT,
-    RUNS_DIR,
+    GRID_OUTPUTS,
     TEMPLATE_FILES,
 )
-from .slurm_utils import Job, update_jobs, aggregate_states
+from .slurm_utils import Job, poll_jobs
 
 from prettytable import PrettyTable
 import sys, ipdb, traceback
@@ -394,33 +394,27 @@ def grid_slurm(
 
     print(f"Submitted {len(jobs)} jobs to slurm")
 
-    states = {}
-    first_iter = True
-    while states.get("PENDING", 0) + states.get("RUNNING", 0) > 0 or first_iter:
-        first_iter = False
-        time.sleep(10)
-        update_jobs(jobs)
-        new_states = aggregate_states(jobs)
-        if new_states != states:
-            states = new_states
-            t = PrettyTable(["Job State", "Count"])
-            for state, count in states.items():
-                t.add_row([state, count])
-            t.align = "l"
-            print(t)
+    # Save slurm job ids of the grid
+    gid = configs[0].get("grid_id", None)
+    same_gid = False
+    if gid is not None:
+        same_gid = all(conf.get("grid_id", None) == gid for conf in configs)
 
-    print("All jobs have completed")
+    if same_gid:
+        print(f"All configs have the same grid_id: {gid}")
+        save_dir = f"{file_root}/{GRID_OUTPUTS}/{gid}"
+        os.makedirs(save_dir, exist_ok=True)
+        with open(os.path.join(save_dir, "slurm_job_ids.txt"), "w") as file:
+            file.write("\n".join([str(job.job_id) for job in jobs]))
+        print(f"Saved {len(jobs)} slurm job ids to {save_dir}/slurm_job_ids.txt")
+
+    time.sleep(10)
+    poll_jobs(jobs)
 
     if post_process:
         # Post process grid and save xarray to netcdf
         # check if each config in configs has the same "grid_id" and assign it to gid
-        gid = configs[0].get("grid_id", None)
-        same_gid = False
-        if gid is not None:
-            same_gid = all(conf.get("grid_id", None) == gid for conf in configs)
-
         if same_gid:
-            print(f"All configs have the same grid_id: {gid}")
             print(f"Processing and saving grid to netcdf")
             process_and_save_grid_to_netcdf(gid, file_root=file_root)
         else:
@@ -440,6 +434,21 @@ def grid_slurm(
     help="Root directory for file storage",
 )
 def grid_to_netcdf(grid_id, file_root):
+    save_dir = f"{file_root}/{GRID_OUTPUTS}/{grid_id}"
+    # check if there is slurm_job_ids.txt in the grid_id directory
+    job_ids_file = os.path.join(save_dir, "slurm_job_ids.txt")
+    if os.path.exists(job_ids_file):
+        click.echo(f"Slurm job ids found for grid with grid_id {grid_id}.")
+        with open(job_ids_file, "r") as file:
+            job_ids = file.read().splitlines()
+            jobs = [Job(int(job_id)) for job_id in job_ids]
+            poll_jobs(jobs)
+
+        # if we made it here, all jobs must have finished,
+        # so remove slurm_job_ids.txt
+        click.echo(f"Removing {job_ids_file}")
+        os.remove(job_ids_file)
+
     click.echo(f"Processing and saving grid with grid_id {grid_id} to netcdf")
     process_and_save_grid_to_netcdf(grid_id, file_root=file_root)
 

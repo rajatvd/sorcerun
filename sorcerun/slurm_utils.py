@@ -1,4 +1,6 @@
 import subprocess
+from prettytable import PrettyTable
+import time
 
 
 class Job:
@@ -38,3 +40,25 @@ def aggregate_states(jobs):
             states[job.job_state] = 0
         states[job.job_state] += 1
     return states
+
+
+def poll_jobs(jobs, poll_interval=10):
+    update_jobs(jobs)
+    states = {}
+    new_states = aggregate_states(jobs)
+    first_iter = True
+    print(f"Polling {len(jobs)} jobs every {poll_interval} seconds")
+    while states.get("PENDING", 0) + states.get("RUNNING", 0) > 0 or first_iter:
+        first_iter = False
+        if new_states != states:
+            states = new_states
+            t = PrettyTable(["Job State", "Count"])
+            for state, count in states.items():
+                t.add_row([state, count])
+            t.align = "l"
+            print(t)
+        time.sleep(poll_interval)
+        update_jobs(jobs)
+        new_states = aggregate_states(jobs)
+
+    print("All jobs have finished")
