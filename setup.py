@@ -17,6 +17,7 @@ setup(
         "streamlit",
         "ipdb",
         "prettytable",
+        "simple_slurm",
     ],
     entry_points="""
         [console_scripts]
