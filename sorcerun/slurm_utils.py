@@ -2,6 +2,7 @@ import subprocess
 from collections import OrderedDict
 from prettytable import PrettyTable
 import time
+from tqdm import tqdm
 
 
 class Job:
@@ -47,26 +48,51 @@ def aggregate_states(jobs):
     return states
 
 
-# TODO: make this print tqdm style, with an updating table/progress bar
 def poll_jobs(jobs, poll_interval=10):
-    print(f"Polling {len(jobs)} jobs every {poll_interval} seconds\n")
+    total = len(jobs)
+    print(f"Polling {total} jobs every {poll_interval} seconds\n")
 
+    bar_format = "{desc} -- {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt}"
     update_jobs(jobs)
+    time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    launched = tqdm(
+        total=total,
+        desc=f"Launched  @ {time_str}",
+        position=0,
+        bar_format=bar_format,
+    )
+    completed = tqdm(
+        total=total,
+        desc=f"Completed @ {time_str}",
+        position=1,
+        bar_format=bar_format,
+    )
     states = aggregate_states(jobs)
-    while states.get("PENDING", 0) + states.get("RUNNING", 0) > 0:
+    first_iter = True
+    while states.get("PENDING", 0) + states.get("RUNNING", 0) > 0 or first_iter:
+        first_iter = False
         t = PrettyTable(["Job State", "Count"])
+        time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         for state, count in states.items():
             t.add_row([state, count])
+            launched.n = states.get("RUNNING", 0) + states.get("COMPLETED", 0)
+            launched.desc = f"Launched  @ {time_str}"
+            launched.refresh()
+            completed.n = states.get("COMPLETED", 0)
+            completed.desc = f"Completed @ {time_str}"
+            completed.refresh()
         t.align = "l"
-        time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        print("-" * 40)
-        print(f"Job states at {time_str}")
-        print(t)
-        print("-" * 40)
+        # print("-" * 40)
+        # print(f"Job states at {time_str}")
+        # print(t)
+        # print("-" * 40)
 
         time.sleep(poll_interval)
 
         update_jobs(jobs)
         states = aggregate_states(jobs)
+
+    launched.close()
+    completed.close()
 
     print("All jobs have finished")
