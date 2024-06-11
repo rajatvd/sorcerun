@@ -404,7 +404,8 @@ def grid_slurm(
         print(f"All configs have the same grid_id: {gid}")
         save_dir = f"{file_root}/{GRID_OUTPUTS}/{gid}"
         os.makedirs(save_dir, exist_ok=True)
-        with open(os.path.join(save_dir, "slurm_job_ids.txt"), "w") as file:
+        job_ids_file = os.path.join(save_dir, "slurm_job_ids.txt")
+        with open(job_ids_file, "w") as file:
             file.write("\n".join([str(job.job_id) for job in jobs]))
         print(f"Saved {len(jobs)} slurm job ids to {save_dir}/slurm_job_ids.txt")
 
@@ -417,6 +418,8 @@ def grid_slurm(
         if same_gid:
             print(f"Processing and saving grid to netcdf")
             process_and_save_grid_to_netcdf(gid, file_root=file_root)
+            click.echo(f"Removing {job_ids_file}")
+            os.remove(job_ids_file)
         else:
             print(
                 f"Configs do not have the same grid_id."
