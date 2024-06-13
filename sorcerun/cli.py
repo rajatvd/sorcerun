@@ -336,8 +336,21 @@ def grid_slurm(
     slurm = slurm_module.slurm
     # slurm.add_arguments(wait=True)
 
+    gid = configs[0].get("grid_id", None)
+    same_gid = False
+    if gid is not None:
+        same_gid = all(conf.get("grid_id", None) == gid for conf in configs)
+
+    gid_dir = None
+    job_ids_file = None
+    if same_gid:
+        print(f"All configs have the same grid_id: {gid}")
+        gid_dir = f"{file_root}/{GRID_OUTPUTS}/{gid}"
+        os.makedirs(gid_dir, exist_ok=True)
+        job_ids_file = os.path.join(gid_dir, "slurm_job_ids.txt")
+
     # make a temp dir to store the config files
-    temp_configs_dir = os.path.join(file_root, TEMP_CONFIGS_DIR)
+    temp_configs_dir = os.path.join(gid_dir or file_root, TEMP_CONFIGS_DIR)
     os.makedirs(temp_configs_dir, exist_ok=True)
 
     jobs = []
@@ -385,6 +398,11 @@ def grid_slurm(
         job_id = int(out.split()[-1])
         jobs.append(Job(job_id))
 
+        # append the job id to the slurm_jobs.txt file if same_gid
+        if same_gid:
+            with open(job_ids_file, "a") as file:
+                file.write(f"{job_id}\n")
+
         print(
             "-" * 5
             + "GRID RUN INFO: "
@@ -394,20 +412,8 @@ def grid_slurm(
 
     print(f"Submitted {len(jobs)} jobs to slurm")
 
-    # Save slurm job ids of the grid
-    gid = configs[0].get("grid_id", None)
-    same_gid = False
-    if gid is not None:
-        same_gid = all(conf.get("grid_id", None) == gid for conf in configs)
-
     if same_gid:
-        print(f"All configs have the same grid_id: {gid}")
-        save_dir = f"{file_root}/{GRID_OUTPUTS}/{gid}"
-        os.makedirs(save_dir, exist_ok=True)
-        job_ids_file = os.path.join(save_dir, "slurm_job_ids.txt")
-        with open(job_ids_file, "w") as file:
-            file.write("\n".join([str(job.job_id) for job in jobs]))
-        print(f"Saved {len(jobs)} slurm job ids to {save_dir}/slurm_job_ids.txt")
+        print(f"Saved {len(jobs)} slurm job ids to {gid_dir}/slurm_job_ids.txt")
 
     time.sleep(10)
     poll_jobs(jobs)
@@ -443,7 +449,7 @@ def grid_to_netcdf(grid_id, file_root):
     if os.path.exists(job_ids_file):
         click.echo(f"Slurm job ids found for grid with grid_id {grid_id}.")
         with open(job_ids_file, "r") as file:
-            job_ids = file.read().splitlines()
+            job_ids = file.read().strip().splitlines()
             jobs = [Job(int(job_id)) for job_id in job_ids]
             poll_jobs(jobs)
 
