@@ -1,4 +1,6 @@
 from .globals import GRID_OUTPUTS, RUNS_DIR, FILE_STORAGE_ROOT
+from pyfzf.pyfzf import FzfPrompt
+from collections import defaultdict
 import incense
 import os
 import json
@@ -14,6 +16,7 @@ from prettytable import PrettyTable
 FILESTORAGE_SPECIAL_DIRS = ["_sources", "_resources"]
 
 
+# %%
 def get_incense_loader(authfile="sorcerun_auth.json"):
     with open(authfile, "r") as f:
         js = json.loads(f.read())
@@ -67,8 +70,20 @@ def filter_by_config(exps, **kwargs):
 
 # %%
 def find_differing_keys(ds):
-    setted = {k: set(d[k] for d in ds) for k in ds[0]}
-    ks = [k for k in setted if len(setted[k]) > 1]
+    # find keys that have differing values in the list of dictionaries
+    # if a value is a list, convert to tuple
+
+    ranges = defaultdict(set)
+    for d in ds:
+        for k, v in d.items():
+            if type(v) == list:
+                v = tuple(v)
+            ranges[k].add(v)
+
+    ks = [k for k in ranges if len(ranges[k]) > 1]
+
+    # setted = {k: set(d[k] for d in ds) for k in ds[0]}
+    # ks = [k for k in setted if len(setted[k]) > 1]
     return ks
 
 
@@ -330,13 +345,10 @@ def print_file_size(file_path):
 
 
 def process_and_save_grid_to_netcdf(gid, file_root=FILE_STORAGE_ROOT):
-    # loader = get_incense_loader()
-    # grid_exps = loader.find_by_config_key("grid_id", gid)
     grid_exps = load_filesystem_expts_by_config_keys(
         grid_id=gid,
         runs_dir=os.path.join(file_root, RUNS_DIR),
     )
-    e = grid_exps[0]
 
     print(f"Found {len(grid_exps)} experiments with grid_id {gid}")
 
@@ -359,3 +371,63 @@ def process_and_save_grid_to_netcdf(gid, file_root=FILE_STORAGE_ROOT):
     metrics_reduced_xr.to_netcdf(netcdf_save_path)
 
     print_file_size(netcdf_save_path)
+
+
+def exps_to_csv(exps, name):
+    save_dir = f"{FILE_STORAGE_ROOT}/{GRID_OUTPUTS}/{name}"
+    os.makedirs(save_dir, exist_ok=True)
+
+    csv_save_path = f"{save_dir}/{name}.csv"
+    print(f"Saving to {csv_save_path}")
+
+    with open(csv_save_path, "w") as f:
+        for e in exps:
+            e_cfg = squish_dict(thaw(e.config))
+            f.write(f"Experiment {e.id}\n")
+            for k, v in e_cfg.items():
+                f.write(f"{k}: {v}\n")
+            f.write("\n")
+
+    print_file_size(csv_save_path)
+
+
+# %%
+def dict_to_fzf_friendly_str(d):
+    return " ".join([f"{k}:{v}" for k, v in d.items()])
+
+
+class ExpsSlicer:
+    def __init__(self, exps):
+        self.exps = exps
+        self.fzf = FzfPrompt()
+
+    def __call__(self, **kwargs):
+        if len(kwargs) == 0:
+            dicts = [squish_dict(thaw(e.config)) for e in self.exps]
+            ks = find_differing_keys(dicts)
+            if len(ks) == 0:
+                print("No differing keys found")
+                return self
+            dicts_with_only_diff_keys = [{k: d.get(k, None) for k in ks} for d in dicts]
+            dictstrs = [dict_to_fzf_friendly_str(d) for d in dicts_with_only_diff_keys]
+            self.fzf.prompt(dictstrs)
+            return self
+        return ExpsSlicer(list(filter_by_config(self.exps, **kwargs)))
+
+    def __len__(self):
+        return len(self.exps)
+
+
+# %%
+if __name__ == "__main__":
+    fzf = FzfPrompt()
+    gid = fzf.prompt(os.listdir(f"{FILE_STORAGE_ROOT}/{GRID_OUTPUTS}"))[0]
+    out = load_filesystem_expts_by_config_keys(
+        grid_id=gid,
+        runs_dir=os.path.join(FILE_STORAGE_ROOT, RUNS_DIR),
+    )
+    print(len(out))
+
+    slicer = ExpsSlicer(out)
+    out[0].config
+    slicer()
