@@ -415,10 +415,24 @@ class ExpsSlicer:
             for i, d in zip(ids, dicts_with_only_diff_keys)
         ]
 
+        self.ranges = defaultdict(set)
+        for d in dicts_with_only_diff_keys:
+            for k, v in d.items():
+                self.ranges[k].add(v)
+
+        self.ranges = {k: sorted(list(v)) for k, v in self.ranges.items()}
+        self.ranges_dir = os.path.join(FILE_STORAGE_ROOT, "ranges")
+        os.makedirs(self.ranges_dir, exist_ok=True)
+        for k, v in self.ranges.items():
+            with open(f"{self.ranges_dir}/{k}_range.txt", "w") as f:
+                f.write("\n".join(map(str, v)))
+
         self.fzf = FzfPrompt()
 
     def fzf_filter(self):
-        key = self.fzf.prompt(list(self.ks))[0]
+        key = self.fzf.prompt(
+            list(self.ks), " --preview 'cat " + f"{self.ranges_dir}/" + "{1}_range.txt'"
+        )[0]
         out = self.fzf.prompt(
             self.dictstrs,
             "--multi"
