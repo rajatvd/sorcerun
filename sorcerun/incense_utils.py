@@ -393,7 +393,7 @@ def exps_to_csv(exps, name):
 
 # %%
 def dict_to_fzf_friendly_str(d):
-    return " ".join([f"{k}:{v}" for k, v in d.items()])
+    return " ".join([f"{k}:{v}" for k, v in d.items()]) + " "
 
 
 class ExpsSlicer:
@@ -404,9 +404,9 @@ class ExpsSlicer:
         for k in exclude_keys:
             [d.pop(k) for d in self.dicts]
 
-        ks = find_differing_keys(self.dicts)
+        self.ks = find_differing_keys(self.dicts)
         dicts_with_only_diff_keys = [
-            {k: d.get(k, None) for k in ks} for d in self.dicts
+            {k: d.get(k, None) for k in self.ks} for d in self.dicts
         ]
         ids = [str(e.id) for e in self.exps]
         self.id_to_exp = {i: e for i, e in zip(ids, self.exps)}
@@ -417,19 +417,26 @@ class ExpsSlicer:
 
         self.fzf = FzfPrompt()
 
+    def fzf_filter(self):
+        key = self.fzf.prompt(list(self.ks))[0]
+        out = self.fzf.prompt(
+            self.dictstrs,
+            "--multi"
+            + " --preview 'cat "
+            + f"{self.runs_dir}/"
+            + "{1}/cout.txt'"
+            + f" --print-query"
+            + f" --query \\'{key}:"
+            + " --bind enter:select-all+accept",
+        )
+        query = out[0]
+        out_ids = [o.split()[0] for o in out[1:]]
+        out_exps = [self.id_to_exp[i] for i in out_ids]
+        return ExpsSlicer(out_exps, runs_dir=self.runs_dir)
+
     def __call__(self, **kwargs):
         if len(kwargs) == 0:
-            out = self.fzf.prompt(
-                self.dictstrs,
-                "--multi"
-                + " --preview 'cat "
-                + f"{self.runs_dir}/"
-                + "{1}/cout.txt'"
-                + " --bind enter:select-all+accept",
-            )
-            out_ids = [o.split()[0] for o in out]
-            out_exps = [self.id_to_exp[i] for i in out_ids]
-            return ExpsSlicer(out_exps, runs_dir=self.runs_dir)
+            return self.fzf_filter()
         return ExpsSlicer(
             list(filter_by_config(self.exps, **kwargs)),
             runs_dir=self.runs_dir,
@@ -454,4 +461,4 @@ if __name__ == "__main__":
     e = out[0]
     print(e._data["captured_out"])
     vars(e)
-    ans = slicer()
+    ans = slicer()()()
