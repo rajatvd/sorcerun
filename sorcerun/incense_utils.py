@@ -397,22 +397,43 @@ def dict_to_fzf_friendly_str(d):
 
 
 class ExpsSlicer:
-    def __init__(self, exps):
+    def __init__(self, exps, runs_dir=RUNS_DIR, exclude_keys=["seed"]):
         self.exps = exps
+        self.runs_dir = runs_dir
+        self.dicts = [squish_dict(thaw(e.config)) for e in self.exps]
+        for k in exclude_keys:
+            [d.pop(k) for d in self.dicts]
+
+        ks = find_differing_keys(self.dicts)
+        dicts_with_only_diff_keys = [
+            {k: d.get(k, None) for k in ks} for d in self.dicts
+        ]
+        ids = [str(e.id) for e in self.exps]
+        self.id_to_exp = {i: e for i, e in zip(ids, self.exps)}
+        self.dictstrs = [
+            f"{i} " + dict_to_fzf_friendly_str(d)
+            for i, d in zip(ids, dicts_with_only_diff_keys)
+        ]
+
         self.fzf = FzfPrompt()
 
     def __call__(self, **kwargs):
         if len(kwargs) == 0:
-            dicts = [squish_dict(thaw(e.config)) for e in self.exps]
-            ks = find_differing_keys(dicts)
-            if len(ks) == 0:
-                print("No differing keys found")
-                return self
-            dicts_with_only_diff_keys = [{k: d.get(k, None) for k in ks} for d in dicts]
-            dictstrs = [dict_to_fzf_friendly_str(d) for d in dicts_with_only_diff_keys]
-            self.fzf.prompt(dictstrs)
-            return self
-        return ExpsSlicer(list(filter_by_config(self.exps, **kwargs)))
+            out = self.fzf.prompt(
+                self.dictstrs,
+                "--multi"
+                + " --preview 'cat "
+                + f"{self.runs_dir}/"
+                + "{1}/cout.txt'"
+                + " --bind enter:select-all+accept",
+            )
+            out_ids = [o.split()[0] for o in out]
+            out_exps = [self.id_to_exp[i] for i in out_ids]
+            return ExpsSlicer(out_exps, runs_dir=self.runs_dir)
+        return ExpsSlicer(
+            list(filter_by_config(self.exps, **kwargs)),
+            runs_dir=self.runs_dir,
+        )
 
     def __len__(self):
         return len(self.exps)
@@ -422,12 +443,15 @@ class ExpsSlicer:
 if __name__ == "__main__":
     fzf = FzfPrompt()
     gid = fzf.prompt(os.listdir(f"{FILE_STORAGE_ROOT}/{GRID_OUTPUTS}"))[0]
+    runs_dir = os.path.join(FILE_STORAGE_ROOT, RUNS_DIR)
     out = load_filesystem_expts_by_config_keys(
         grid_id=gid,
-        runs_dir=os.path.join(FILE_STORAGE_ROOT, RUNS_DIR),
+        runs_dir=runs_dir,
     )
     print(len(out))
 
-    slicer = ExpsSlicer(out)
-    out[0].config
-    slicer()
+    slicer = ExpsSlicer(out, runs_dir=runs_dir)
+    e = out[0]
+    print(e._data["captured_out"])
+    vars(e)
+    ans = slicer()
