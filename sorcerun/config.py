@@ -1,14 +1,7 @@
-import time
 import numpy as np
-from git.repo.base import Repo
+from sorcerun.git_utils import get_exp_info
 
-repo = Repo(".", search_parent_directories=True)
-dirty = repo.is_dirty()
-commit_hash = repo.git.rev_parse("HEAD")
-short_length = 8
-short_hash = commit_hash[:short_length]
-time_str = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
-exp_info = f"{time_str}-{short_hash}-dirty={dirty}"
+exp_info = get_exp_info()
 
 n = 1000
 d = 100
