@@ -10,3 +10,4 @@ TEMPLATE_FILES = [
     "config.py",
     "grid_config.py",
 ]
+TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"

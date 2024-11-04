@@ -1,5 +1,6 @@
 import time
 from git.repo.base import Repo
+from globals import TIME_FORMAT
 
 
 def get_repo():
@@ -17,9 +18,14 @@ def is_dirty(repo):
     return dirty
 
 
+def get_time_str():
+    time_str = time.strftime(TIME_FORMAT, time.localtime())
+    return time_str
+
+
 def get_exp_info(short_length=8):
     repo = get_repo()
     short_hash = get_commit_hash(repo)[:short_length]
-    time_str = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
+    time_str = get_time_str()
     exp_info = f"{time_str}-{short_hash}-dirty={is_dirty(repo)}"
     return exp_info
