@@ -1,6 +1,6 @@
 import time
 from git.repo.base import Repo
-from globals import TIME_FORMAT
+from .globals import TIME_FORMAT
 
 
 def get_repo():
