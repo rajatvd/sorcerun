@@ -1,12 +1,13 @@
 from numpy import squeeze
 import numpy as np
-from globals import GRID_OUTPUTS
+from sorcerun.globals import GRID_OUTPUTS
 import itertools
 import os
 import xarray as xr
 import matplotlib.pyplot as plt
 import streamlit as st
 import scipy.stats
+from sorcerun.incense_utils import csv_to_xarray
 
 st.title("Grid Plotter")
 # show current working directory
@@ -61,11 +62,11 @@ if st.button("Save tags"):
 st.write(f"Selected grid id: `{grid_id}`")
 
 
-# Load the netcdf file for the selected grid id as an xarray
+# Load the csv file for the selected grid id as an xarray
 grid_output_dir = os.path.join(GRID_OUTPUTS, grid_id)
-netcdf_file = os.path.join(grid_output_dir, f"{grid_id}.nc")
+csv_file = os.path.join(grid_output_dir, f"{grid_id}.csv")
 
-data = xr.open_dataarray(netcdf_file)
+data = csv_to_xarray(csv_file, value_column="metrics")
 
 # get dims with more than 1 coordinate
 dims = sorted([dim for dim in data.dims if len(data[dim]) > 1 and dim != "metric"])
