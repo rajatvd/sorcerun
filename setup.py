@@ -19,6 +19,7 @@ setup(
         "ipdb",
         "prettytable",
         "simple_slurm",
+        "pyfzf",
     ],
     entry_points="""
         [console_scripts]
