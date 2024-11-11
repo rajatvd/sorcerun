@@ -5,12 +5,18 @@ on:
     branches:
       - main  # or your default branch name
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   create-release-and-publish:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # This ensures all tags are fetched
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -28,27 +34,18 @@ jobs:
         version=$(python setup.py --version)
         echo "VERSION=$version" >> $GITHUB_OUTPUT
 
-    - name: Check if tag exists
-      id: check_tag
-      run: |
-        if [ $(git tag -l "v${{ steps.get_version.outputs.VERSION }}") ]; then
-          echo "Tag exists"
-          echo "TAG_EXISTS=true" >> $GITHUB_OUTPUT
-        else
-          echo "Tag does not exist"
-          echo "TAG_EXISTS=false" >> $GITHUB_OUTPUT
-        fi
-
-    - name: Create and push tag
-      if: steps.check_tag.outputs.TAG_EXISTS == 'false'
+    - name: Try to create tag
+      id: create_tag
+      continue-on-error: true
       run: |
         git config user.name github-actions
         git config user.email github-actions@github.com
         git tag v${{ steps.get_version.outputs.VERSION }}
         git push origin v${{ steps.get_version.outputs.VERSION }}
+        echo "TAG_CREATED=true" >> $GITHUB_OUTPUT
 
     - name: Create Release
-      if: steps.check_tag.outputs.TAG_EXISTS == 'false'
+      if: steps.create_tag.outputs.TAG_CREATED == 'true'
       id: create_release
       uses: actions/create-release@v1
       env:
@@ -57,13 +54,13 @@ jobs:
         tag_name: v${{ steps.get_version.outputs.VERSION }}
         release_name: Release v${{ steps.get_version.outputs.VERSION }}
         draft: false
-        prerelease: true
+        prerelease: false
 
     - name: Build package
       run: python -m build
 
     - name: Publish distribution to PyPI
-      if: steps.check_tag.outputs.TAG_EXISTS == 'false'
+      if: steps.create_tag.outputs.TAG_CREATED == 'true'
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         password: ${{ secrets.PYPI_API_TOKEN }}
