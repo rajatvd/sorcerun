@@ -1,16 +1,15 @@
 import numpy as np
 import itertools
-import time
-from git.repo.base import Repo
+from sorcerun.git_utils import get_repo, get_time_str, get_commit_hash, is_dirty
 
-repo = Repo(".", search_parent_directories=True)
-dirty = repo.is_dirty()
-commit_hash = repo.git.rev_parse("HEAD")
-short_length = 8
-short_hash = commit_hash[:short_length]
-time_str = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
+repo = get_repo()
+dirty = is_dirty(repo)
+time_str = get_time_str()
+short_hash = get_commit_hash(repo)[:8]
+
 extra = "jlTest"
 grid_id = f"{time_str}_{extra}_{short_hash}_dirty={dirty}"
+
 
 ns = (np.logspace(1, 3, 20, dtype=int)).tolist()
 ds = (np.logspace(1, 3, 3, dtype=int)).tolist()
