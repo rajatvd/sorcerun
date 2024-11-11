@@ -11,9 +11,9 @@ extra = "jlTest"
 grid_id = f"{time_str}_{extra}_{short_hash}_dirty={dirty}"
 
 
-ns = (np.logspace(1, 3, 20, dtype=int)).tolist()
+ns = (np.logspace(1, 3, 5, dtype=int)).tolist()
 ds = (np.logspace(1, 3, 3, dtype=int)).tolist()
-ks = (np.logspace(1, 3, 20, dtype=int)).tolist()
+ks = (np.logspace(1, 3, 5, dtype=int)).tolist()
 num_repeats = 2
 
 grid_config = {
