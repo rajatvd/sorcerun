@@ -12,6 +12,7 @@ import xarray as xr
 from tqdm import tqdm
 from pathlib import Path
 from prettytable import PrettyTable
+import pandas as pd
 
 FILESTORAGE_SPECIAL_DIRS = ["_sources", "_resources"]
 
@@ -286,13 +287,16 @@ def exps_to_xarray(exps, exclude_keys=["seed"]):
 
     # create empty xarrays
     shape = tuple(len(coords[a]) for a in axes)
-    # import ipdb; ipdb.set_trace()
-    metric_data = np.empty(shape, dtype=np.float32)
+
+    # metric data should have same dtype as the metric values
+    metric_dtype = np.float64
+    metric_data = np.empty(shape, dtype=metric_dtype)
     metric_data.fill(np.nan)
     metrics_arr = xr.DataArray(
         metric_data,
         coords=coords,
         dims=axes,
+        name="metrics",
     )
 
     shape_without_metric = tuple(len(coords[a]) for a in axes_without_metric)
@@ -302,6 +306,7 @@ def exps_to_xarray(exps, exclude_keys=["seed"]):
         exps_data,
         coords=coords_without_metric,
         dims=axes_without_metric,
+        name="experiments",
     )
 
     # now fill in the metric values
@@ -373,22 +378,95 @@ def process_and_save_grid_to_netcdf(gid, file_root=FILE_STORAGE_ROOT):
     print_file_size(netcdf_save_path)
 
 
-def exps_to_csv(exps, name):
-    save_dir = f"{FILE_STORAGE_ROOT}/{GRID_OUTPUTS}/{name}"
+# %%
+def xarray_to_csv(da, csv_filename):
+    """
+    Convert an xarray DataArray to a CSV file, removing NaN values.
+
+    Parameters:
+    da (xarray.DataArray): The input DataArray
+    csv_filename (str): The name of the output CSV file
+
+    Returns:
+    None
+    """
+    # Step 1: Convert to pandas DataFrame
+    df = da.to_dataframe()
+
+    # Step 2: Drop NaN values
+    df_clean = df.dropna()
+
+    # Step 3: Reset index to create columns for each coordinate
+    df_clean_reset = df_clean.reset_index()
+
+    # Step 4: Save to CSV
+    df_clean_reset.to_csv(csv_filename, index=False)
+
+    print_file_size(csv_filename)
+
+    return df_clean_reset
+
+
+# %%
+def csv_to_xarray(csv_filename, value_column):
+    """
+    Convert a CSV file to an xarray DataArray,
+    treating all columns except the value column as coordinates.
+    The DataArray is named after the value column.
+
+    Parameters:
+    csv_filename (str): The name of the input CSV file
+    value_column (str): The name of the column containing the data values
+
+    Returns:
+    xarray.DataArray: The resulting DataArray
+    """
+    df = pd.read_csv(csv_filename)
+
+    print(df[value_column].dtype)
+
+    coord_columns = [col for col in df.columns if col != value_column]
+
+    coords = {col: sorted(df[col].unique()) for col in coord_columns}
+
+    shape = tuple(len(coords[col]) for col in coord_columns)
+    data = np.full(shape, np.nan)
+
+    for _, row in df.iterrows():
+        index = tuple(coords[col].index(row[col]) for col in coord_columns)
+        data[index] = row[value_column]
+
+    da = xr.DataArray(data, coords=coords, dims=coord_columns, name=value_column)
+
+    return da
+
+
+# %%
+def process_and_save_grid_to_csv(gid, file_root=FILE_STORAGE_ROOT):
+    grid_exps = load_filesystem_expts_by_config_keys(
+        grid_id=gid,
+        runs_dir=os.path.join(file_root, RUNS_DIR),
+    )
+
+    print(f"Found {len(grid_exps)} experiments with grid_id {gid}")
+
+    grid_exps_xr, grid_metrics_xr = exps_to_xarray(grid_exps)
+
+    save_dir = f"{file_root}/{GRID_OUTPUTS}/{gid}"
     os.makedirs(save_dir, exist_ok=True)
 
-    csv_save_path = f"{save_dir}/{name}.csv"
-    print(f"Saving to {csv_save_path}")
+    csv_filename = f"{save_dir}/{gid}.csv"
+    print(f"Saving to {csv_filename}")
 
-    with open(csv_save_path, "w") as f:
-        for e in exps:
-            e_cfg = squish_dict(thaw(e.config))
-            f.write(f"Experiment {e.id}\n")
-            for k, v in e_cfg.items():
-                f.write(f"{k}: {v}\n")
-            f.write("\n")
+    # convert coordinate values that are tuples to strings to avoid serialization issues
+    old_coords = [(k, v) for k, v in grid_metrics_xr.coords.items()]
+    for k, v in old_coords:
+        if any(type(x) == tuple for x in v.values):
+            print(f"Converting coordinate values of {k} to str")
+            grid_metrics_xr.coords[k] = [str(x) for x in v.values]
 
-    print_file_size(csv_save_path)
+    df = xarray_to_csv(grid_metrics_xr, csv_filename)
+    return df
 
 
 # %%
@@ -396,6 +474,7 @@ def dict_to_fzf_friendly_str(d):
     return " ".join([f"{k}:{v}" for k, v in d.items()]) + " "
 
 
+# this class is still WIP
 class ExpsSlicer:
     def __init__(self, exps, runs_dir=RUNS_DIR, exclude_keys=["seed"]):
         self.exps = exps
@@ -470,9 +549,18 @@ if __name__ == "__main__":
         runs_dir=runs_dir,
     )
     print(len(out))
+    exps_arr, metrics_arr = exps_to_xarray(out, exclude_keys=["seed"])
 
-    slicer = ExpsSlicer(out, runs_dir=runs_dir)
-    e = out[0]
-    print(e._data["captured_out"])
-    vars(e)
-    ans = slicer()()()
+    # product of all the axes sizes
+    print(np.prod([len(v) for v in metrics_arr.coords.values()]))
+
+    df = xarray_to_csv(metrics_arr, f"{gid}.csv")
+    da = csv_to_xarray(f"{gid}.csv", "metrics")
+    err = np.abs(da.data - metrics_arr.data)
+    print(np.sum(err[~np.isnan(err)]))
+
+#     slicer = ExpsSlicer(out, runs_dir=runs_dir)
+#     e = out[0]
+#     print(e._data["captured_out"])
+#     vars(e)
+#     ans = slicer()()()

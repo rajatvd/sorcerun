@@ -7,7 +7,12 @@ import json, yaml
 from contextlib import ExitStack
 from .mongodb_utils import mongodb_server, init_mongodb
 from .sacred_utils import load_python_module, run_sacred_experiment
-from .incense_utils import squish_dict, unsquish_dict, process_and_save_grid_to_netcdf
+from .incense_utils import (
+    squish_dict,
+    unsquish_dict,
+    process_and_save_grid_to_netcdf,
+    process_and_save_grid_to_csv,
+)
 from .globals import (
     AUTH_FILE,
     TEMP_CONFIGS_DIR,
@@ -236,12 +241,12 @@ def grid_run(
 
         if same_gid:
             print(f"All configs have the same grid_id: {gid}")
-            print(f"Processing and saving grid to netcdf")
-            process_and_save_grid_to_netcdf(gid, file_root=file_root)
+            print(f"Processing and saving grid to csv")
+            process_and_save_grid_to_csv(gid, file_root=file_root)
         else:
             print(
                 f"Configs do not have the same grid_id."
-                + " Skipping processing and saving grid to netcdf"
+                + " Skipping processing and saving grid to csv"
             )
 
 
@@ -422,14 +427,14 @@ def grid_slurm(
         # Post process grid and save xarray to netcdf
         # check if each config in configs has the same "grid_id" and assign it to gid
         if same_gid:
-            print(f"Processing and saving grid to netcdf")
-            process_and_save_grid_to_netcdf(gid, file_root=file_root)
+            print(f"Processing and saving grid to csv")
+            process_and_save_grid_to_csv(gid, file_root=file_root)
             click.echo(f"Removing {job_ids_file}")
             os.remove(job_ids_file)
         else:
             print(
                 f"Configs do not have the same grid_id."
-                + " Skipping processing and saving grid to netcdf"
+                + " Skipping processing and saving grid to csv"
             )
 
 
@@ -460,6 +465,35 @@ def grid_to_netcdf(grid_id, file_root):
 
     click.echo(f"Processing and saving grid with grid_id {grid_id} to netcdf")
     process_and_save_grid_to_netcdf(grid_id, file_root=file_root)
+
+
+@sorcerun.command()
+@click.argument("grid_id", type=str)
+@click.option(
+    "--file_root",
+    "-f",
+    default=FILE_STORAGE_ROOT,
+    type=click.Path(file_okay=False),
+    help="Root directory for file storage",
+)
+def grid_to_csv(grid_id, file_root):
+    save_dir = f"{file_root}/{GRID_OUTPUTS}/{grid_id}"
+    # check if there is slurm_job_ids.txt in the grid_id directory
+    job_ids_file = os.path.join(save_dir, "slurm_job_ids.txt")
+    if os.path.exists(job_ids_file):
+        click.echo(f"Slurm job ids found for grid with grid_id {grid_id}.")
+        with open(job_ids_file, "r") as file:
+            job_ids = file.read().strip().splitlines()
+            jobs = [Job(int(job_id)) for job_id in job_ids]
+            poll_jobs(jobs)
+
+        # if we made it here, all jobs must have finished,
+        # so remove slurm_job_ids.txt
+        click.echo(f"Removing {job_ids_file}")
+        os.remove(job_ids_file)
+
+    click.echo(f"Processing and saving grid with grid_id {grid_id} to csv")
+    process_and_save_grid_to_csv(grid_id, file_root=file_root)
 
 
 @sorcerun.group()
