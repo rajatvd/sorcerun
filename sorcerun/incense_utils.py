@@ -423,8 +423,6 @@ def csv_to_xarray(csv_filename, value_column):
     """
     df = pd.read_csv(csv_filename)
 
-    print(df[value_column].dtype)
-
     coord_columns = [col for col in df.columns if col != value_column]
 
     coords = {col: sorted(df[col].unique()) for col in coord_columns}
