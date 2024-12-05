@@ -6,7 +6,7 @@ RUNS_DIR = "runs"
 FILE_STORAGE_ROOT = "file_storage"
 TEMP_CONFIGS_DIR = "temp_configs"
 TEMPLATE_FILES = [
-    "adapter.py",
+    "main.py",
     "config.py",
     "grid_config.py",
 ]

@@ -1,5 +1,5 @@
 # experimentally verify the JL lemma
-from sorcerun.sacred_utils import DummyRun
+from sorcerun.sacred_utils import run_sacred_experiment
 
 import numpy as np
 
@@ -39,4 +39,4 @@ adapter.experiment_name = "jl_lemma_test"
 if __name__ == "__main__":
     from config import config
 
-    print(adapter(config, DummyRun()))
+    run_sacred_experiment(adapter, config)
