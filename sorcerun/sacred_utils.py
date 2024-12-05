@@ -5,11 +5,12 @@ from sacred.observers import MongoObserver, FileStorageObserver
 from sacred.utils import apply_backspaces_and_linefeeds
 import importlib
 import json
-from .globals import AUTH_FILE, RUNS_DIR
+from .globals import AUTH_FILE, RUNS_DIR, FILE_STORAGE_ROOT
 import sys
 import os
 
 SETTINGS.CAPTURE_MODE = "sys"
+
 
 def load_python_module(python_file):
     file_dir = os.path.dirname(os.path.abspath(python_file))
@@ -27,7 +28,7 @@ def run_sacred_experiment(
     config,
     auth_path=AUTH_FILE,
     use_mongo=True,
-    file_storage_root=".",
+    file_storage_root=FILE_STORAGE_ROOT,
 ):
     experiment_name = getattr(adapter_func, "experiment_name", "sorcerun_experiment")
     ex = Experiment(experiment_name)
@@ -41,9 +42,11 @@ def run_sacred_experiment(
 
             atlas = auth_data.get("atlas_connection_string", 0)
             url = (
-                atlas
-                if atlas != 0
-                else f"mongodb://{auth_data['client_kwargs']['username']}:{auth_data['client_kwargs']['password']}@{auth_data['client_kwargs']['host']}:{auth_data['client_kwargs']['port']}",
+                (
+                    atlas
+                    if atlas != 0
+                    else f"mongodb://{auth_data['client_kwargs']['username']}:{auth_data['client_kwargs']['password']}@{auth_data['client_kwargs']['host']}:{auth_data['client_kwargs']['port']}"
+                ),
             )
             try:
                 client = pymongo.MongoClient(url)
@@ -81,7 +84,7 @@ def run_sacred_experiment(
     ex.run()
 
 
-class DummyRun():
+class DummyRun:
     def __init__(self):
         pass
 
@@ -93,4 +96,3 @@ class DummyRun():
 
     def add_artifact(self, filename, name):
         pass
-
