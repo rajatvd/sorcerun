@@ -159,6 +159,24 @@ def grid_run(
     post_process=False,
     mongo=False,
 ):
+    grid_run_function(
+        python_file,
+        grid_config_file,
+        file_root,
+        auth_path,
+        post_process=post_process,
+        mongo=mongo,
+    )
+
+
+def grid_run_function(
+    python_file,
+    grid_config_file,
+    file_root=FILE_STORAGE_ROOT,
+    auth_path=AUTH_FILE,
+    post_process=False,
+    mongo=False,
+):
     # Load the adapter function from the provided Python file
     adapter_module = load_python_module(python_file)
     if not hasattr(adapter_module, "adapter"):

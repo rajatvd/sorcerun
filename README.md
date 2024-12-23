@@ -14,7 +14,7 @@ Sorcerun also offers a CLI to help setup and manage a MongoDB observer for sacre
 
 It also has tools to run **grids** of experiments and then analyze results from experiment grids.
 
-# TODO
+# Todo
 
 -   [x] Add example and documentation (top priority)
     -   [ ] Document the JL example

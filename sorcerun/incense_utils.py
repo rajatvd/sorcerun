@@ -27,7 +27,10 @@ def get_incense_loader(authfile="sorcerun_auth.json"):
     return incense.ExperimentLoader(mongo_uri=mongo_uri, db_name=db_name)
 
 
-def load_filesystem_expts_by_config_keys(runs_dir=RUNS_DIR, **kwargs):
+def load_filesystem_expts_by_config_keys(
+    runs_dir=f"{FILE_STORAGE_ROOT}/{RUNS_DIR}",
+    **kwargs,
+):
     runs_dir = Path(runs_dir)
     configs = {
         run_dir.name: incense.experiment._load_json_from_path(run_dir / "config.json")

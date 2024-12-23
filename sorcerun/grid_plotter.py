@@ -210,7 +210,7 @@ if save_plots:
     st.write(f"Saving plots to: `{save_dir}`")
     os.makedirs(save_dir, exist_ok=True)
 
-# TODO: auto change ylabel is there is only one metric and dont include that in legend
+# ToDO: auto change ylabel is there is only one metric and dont include that in legend
 
 # Add a button to actually make the plots
 # check if other_dims is empty
