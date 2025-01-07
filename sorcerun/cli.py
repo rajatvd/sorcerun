@@ -45,6 +45,7 @@ def sorcerun(debug):
 
 @sorcerun.command()
 def template():
+    # TODO: update this to use subtrees and generate notebooks with some plots instead of the streamlit app
     this_file_path = os.path.abspath(__file__)
     this_dir = os.path.dirname(this_file_path)
 
