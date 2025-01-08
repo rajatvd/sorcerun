@@ -77,6 +77,7 @@ def run_sacred_experiment(
 
     @ex.main
     def run_experiment(_config, _run):
+        # TODO add profile + flameprof
         _run.info["info"] = "info-entry"
         result = adapter_func(_config, _run)
         return result
