@@ -4,7 +4,11 @@ from .globals import TIME_FORMAT
 
 
 def get_repo():
-    repo = Repo(".", search_parent_directories=True)
+    try:
+        repo = Repo(".", search_parent_directories=True)
+    except Exception as e:
+        print(f"An error occurred while trying to get repo: {e}")
+        repo = None
     return repo
 
 
@@ -30,23 +34,26 @@ def get_exp_info(short_length=8):
     exp_info = f"{time_str}-{short_hash}-dirty={is_dirty(repo)}"
     return exp_info
 
+
 # %%
 def get_tree_hash(repo, dir_path):
     try:
         assert not repo.bare, "The repository is bare and has no working tree."
-        
+
         # Get the current commit
         head_commit = repo.head.commit
-        
+
         # Get the tree object for the current commit
         tree = head_commit.tree
-        
+
         # Traverse the tree to find the subdirectory
         tree_obj = tree / dir_path
-        
+
         return tree_obj.hexsha
     except KeyError:
-        print(f"Directory '{dir_path}' does not exist in the repository {repo.working_dir}")
+        print(
+            f"Directory '{dir_path}' does not exist in the repository {repo.working_dir}"
+        )
         return None
     except Exception as e:
         print(f"An error occurred: {e}")
