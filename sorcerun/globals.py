@@ -6,8 +6,8 @@ RUNS_DIR = "runs"
 FILE_STORAGE_ROOT = "file_storage"
 TEMP_CONFIGS_DIR = "temp_configs"
 TEMPLATE_FILES = [
-    "main.py",
-    "config.py",
-    "grid_config.py",
+    "main/main.py",
+    "main/config.py",
+    "main/grid_config.py",
 ]
 TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
