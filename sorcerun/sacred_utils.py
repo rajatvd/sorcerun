@@ -10,6 +10,8 @@ import importlib
 import json
 import sys
 import os
+import cProfile
+import subprocess
 
 SETTINGS.CAPTURE_MODE = "sys"
 
@@ -31,6 +33,7 @@ def run_sacred_experiment(
     auth_path=AUTH_FILE,
     use_mongo=True,
     file_storage_root=FILE_STORAGE_ROOT,
+    profile=True,
 ):
     # if file_storage_root is not an absolute path, prefix the current git repo root
     if not os.path.isabs(file_storage_root):
@@ -90,9 +93,27 @@ def run_sacred_experiment(
 
     @ex.main
     def run_experiment(_config, _run):
-        # TODO add profile + flameprof
         _run.info["info"] = "info-entry"
-        result = adapter_func(_config, _run)
+        if profile:
+            with cProfile.Profile() as pr:
+                result = adapter_func(_config, _run)
+                pr.dump_stats(f"{runs_dir}/{_run._id}/profile.prof")
+
+            # generate flamegraph using flameprof and flamegraph.pl
+            try:
+                subprocess.run(
+                    f"flameprof --format=log {runs_dir}/{_run._id}/profile.prof "
+                    + f"| flamegraph.pl > {runs_dir}/{_run._id}/profile.svg",
+                    shell=True,
+                )
+            except Exception as e:
+                traceback.print_exc()
+                print(
+                    f"WARNING: Failed to generate flamegraph with above exception."
+                    + " Not generating flamegraph"
+                )
+        else:
+            result = adapter_func(_config, _run)
         return result
 
     ex.run()

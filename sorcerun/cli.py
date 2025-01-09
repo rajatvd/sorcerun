@@ -79,7 +79,20 @@ def template():
     is_flag=True,
     help="Use MongoObserver",
 )
-def run(python_file, config_file, file_root, auth_path, mongo):
+@click.option(
+    "--dont_profile",
+    is_flag=True,
+    help="Don't use cProfile to profile the adapter function",
+    default=False,
+)
+def run(
+    python_file,
+    config_file,
+    file_root,
+    auth_path,
+    mongo,
+    dont_profile,
+):
     # Load the adapter function from the provided Python file
     adapter_module = load_python_module(python_file)
     if not hasattr(adapter_module, "adapter"):
@@ -116,6 +129,7 @@ def run(python_file, config_file, file_root, auth_path, mongo):
         auth_path,
         use_mongo=mongo,
         file_storage_root=file_root,
+        profile=not dont_profile,
     )
 
 

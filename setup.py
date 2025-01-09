@@ -21,6 +21,7 @@ setup(
         "simple_slurm",
         "pandas",
         "pyfzf",
+        "flameprof",
     ],
     entry_points="""
         [console_scripts]
