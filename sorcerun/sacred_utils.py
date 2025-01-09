@@ -1,3 +1,6 @@
+from .globals import AUTH_FILE, RUNS_DIR, FILE_STORAGE_ROOT
+from .git_utils import get_repo
+
 from sacred import Experiment, SETTINGS
 import pymongo
 import traceback
@@ -5,7 +8,6 @@ from sacred.observers import MongoObserver, FileStorageObserver
 from sacred.utils import apply_backspaces_and_linefeeds
 import importlib
 import json
-from .globals import AUTH_FILE, RUNS_DIR, FILE_STORAGE_ROOT
 import sys
 import os
 
@@ -30,6 +32,17 @@ def run_sacred_experiment(
     use_mongo=True,
     file_storage_root=FILE_STORAGE_ROOT,
 ):
+    # if file_storage_root is not an absolute path, prefix the current git repo root
+    if not os.path.isabs(file_storage_root):
+        repo = get_repo()
+        if repo is None:
+            print(
+                f"WARNING: Could not get git repo. Using current working directory as file storage root"
+            )
+            file_storage_root = os.path.join(os.getcwd(), file_storage_root)
+        else:
+            file_storage_root = os.path.join(repo.working_dir, file_storage_root)
+
     experiment_name = getattr(adapter_func, "experiment_name", "sorcerun_experiment")
     ex = Experiment(experiment_name)
     ex.captured_out_filter = apply_backspaces_and_linefeeds
