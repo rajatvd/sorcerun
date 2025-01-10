@@ -60,6 +60,12 @@ def get_tree_hash(repo, dir_path):
         return None
 
 
+# %%
+def freeze_notebook(commit_hash, main_tree_hash):
+    pass
+    # TODO implement this
+
+
 if __name__ == "__main__":
     repo = get_repo()
     tree_hash = get_tree_hash(repo, "sorcerun")
