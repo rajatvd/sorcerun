@@ -1,6 +1,8 @@
 import time
+import os
+import inspect
 from git.repo.base import Repo
-from .globals import TIME_FORMAT
+from .globals import TIME_FORMAT, FILE_STORAGE_ROOT
 
 
 def get_repo():
@@ -61,9 +63,54 @@ def get_tree_hash(repo, dir_path):
 
 
 # %%
-def freeze_notebook(commit_hash, main_tree_hash):
-    pass
-    # TODO implement this
+def freeze_notebook(
+    filename,
+    repo,
+    commit_hash,
+    main_tree_hash,
+):
+    script_path = f"{repo.working_dir}/{filename}"
+
+    base_filename = filename.split("/")[-1]
+
+    commit = repo.commit(commit_hash)
+    commit_time = commit.committed_datetime.strftime(TIME_FORMAT)
+    target_dir = f"{repo.working_dir}/{FILE_STORAGE_ROOT}/notebooks/{main_tree_hash}"
+    os.makedirs(target_dir, exist_ok=True)
+    target_path = f"{target_dir}/{commit_time}-{base_filename}"
+
+    # Read the current content of the script
+    with open(script_path, "r") as f:
+        lines = f.readlines()
+
+    # Prepare the replacement lines
+    commit_line = f'COMMIT_HASH = "{commit_hash}"\n'
+    tree_line = f'MAIN_TREE_HASH = "{main_tree_hash}"\n'
+
+    # Find and replace the target lines
+    replaced_commit = False
+    replaced_tree = False
+    new_lines = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("COMMIT_HASH"):
+            new_lines.append(commit_line)
+            replaced_commit = True
+        elif stripped.startswith("MAIN_TREE_HASH"):
+            new_lines.append(tree_line)
+            replaced_tree = True
+        else:
+            new_lines.append(line)
+
+    # Check if both lines were found and replaced
+    if not replaced_commit:
+        raise RuntimeError("COMMIT_HASH assignment line not found")
+    if not replaced_tree:
+        raise RuntimeError("MAIN_TREE_HASH assignment line not found")
+
+    # Write the modified content back to the file
+    with open(target_path, "w") as f:
+        f.writelines(new_lines)
 
 
 if __name__ == "__main__":

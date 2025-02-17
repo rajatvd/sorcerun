@@ -15,4 +15,4 @@ MAIN_TREE_HASH = get_tree_hash(REPO, "main")
 # ... perform notebook things
 
 # %% freeze the notebook
-# freeze_notebook(COMMIT_HASH, MAIN_TREE_HASH)
+freeze_notebook(f"sorcerun/plot.py", REPO, COMMIT_HASH, MAIN_TREE_HASH)
