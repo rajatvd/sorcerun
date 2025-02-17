@@ -471,6 +471,44 @@ def process_and_save_grid_to_csv(gid, file_root=FILE_STORAGE_ROOT):
 
 
 # %%
+def get_latest_single_and_grid_exps(exps):
+    """Parse list of experiments to get the latest
+    single experiment and grid experiments (a grid of exps is assumed to have the
+                                            same time_str for all exps in the grid).
+
+    :param exps: list of incense experiments
+
+    Returns: tuple (single_exp, grid_exps)
+
+    If no single experiment is found, single_exp is None.
+    If no grid experiments are found, grid_exps is an empty list.
+    """
+    time_str_to_exps = {}
+    for exp in exps:
+        time_str = exp.config.time_str
+        if time_str not in time_str_to_exps:
+            time_str_to_exps[time_str] = []
+        time_str_to_exps[time_str].append(exp)
+    sorted_time_strs = sorted(time_str_to_exps.keys())[::-1]
+    single_exp_time_str = None
+    grid_time_str = None
+    for time_str in sorted_time_strs:
+        if len(time_str_to_exps[time_str]) == 1:
+            single_exp_time_str = (
+                time_str if single_exp_time_str is None else single_exp_time_str
+            )
+        else:
+            grid_time_str = time_str if grid_time_str is None else grid_time_str
+
+        if single_exp_time_str is not None and grid_time_str is not None:
+            break
+
+    single_exp = time_str_to_exps.get(single_exp_time_str, [None])[0]
+    grid_exps = time_str_to_exps.get(grid_time_str, [])
+    return single_exp, grid_exps
+
+
+# %%
 def dict_to_fzf_friendly_str(d):
     return " ".join([f"{k}:{v}" for k, v in d.items()]) + " "
 
