@@ -473,8 +473,9 @@ def process_and_save_grid_to_csv(gid, file_root=FILE_STORAGE_ROOT):
 # %%
 def get_latest_single_and_grid_exps(exps):
     """Parse list of experiments to get the latest
-    single experiment and grid experiments (a grid of exps is assumed to have the
-                                            same time_str for all exps in the grid).
+    single experiment and grid of experiments
+    (a grid of exps is assumed to have the
+    same time_str for all exps in the grid).
 
     :param exps: list of incense experiments
 
