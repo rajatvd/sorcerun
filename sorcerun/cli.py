@@ -47,7 +47,8 @@ def sorcerun(debug):
 def template():
     this_file_path = os.path.abspath(__file__)
     this_dir = os.path.dirname(this_file_path)
-    os.makedirs(f"{this_dir}/main", exist_ok=True)
+
+    os.makedirs(f"main", exist_ok=True)
 
     for file in TEMPLATE_FILES:
         # check if file already exists in current directory
