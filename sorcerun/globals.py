@@ -9,5 +9,6 @@ TEMPLATE_FILES = [
     "main/main.py",
     "main/config.py",
     "main/grid_config.py",
+    "plot.py"
 ]
 TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
