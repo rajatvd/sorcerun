@@ -1,4 +1,8 @@
 from setuptools import setup, find_packages
+import os
+
+os.chmod("scripts/flamegraph.pl", 0o755)
+
 
 setup(
     name="sorcerun",
@@ -23,6 +27,7 @@ setup(
         "pyfzf",
         "flameprof",
     ],
+    scripts=["scripts/flamegraph.pl"],
     entry_points="""
         [console_scripts]
         sorcerun=sorcerun.cli:sorcerun
