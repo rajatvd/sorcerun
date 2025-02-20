@@ -69,6 +69,7 @@ def freeze_notebook(
     commit_hash,
     main_tree_hash,
 ):
+    # TODO: generalize to freeze any set of subtree hash assignment lines
     script_path = f"{repo.working_dir}/{filename}"
 
     base_filename = filename.split("/")[-1]
