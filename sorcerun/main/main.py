@@ -1,6 +1,3 @@
-from sorcerun.sacred_utils import run_sacred_experiment
-
-
 def adapter(config, _run):
     n = config["n"]
 
@@ -15,6 +12,8 @@ def adapter(config, _run):
 adapter.experiment_name = "sample_experiment"
 
 if __name__ == "__main__":
-    from config import config
+    from sorcerun.cli import sorcerun_run
+    from sorcerun.git_utils import get_repo
 
-    run_sacred_experiment(adapter, config)
+    ROOT = get_repo().working_dir
+    sorcerun_run(f"{ROOT}/main/main.py", f"{ROOT}/main/config.py")

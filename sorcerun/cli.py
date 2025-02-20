@@ -94,8 +94,26 @@ def run(
     mongo,
     dont_profile,
 ):
+    sorcerun_run(
+        python_file,
+        config_file,
+        file_root=file_root,
+        auth_path=auth_path,
+        mongo=mongo,
+        dont_profile=dont_profile,
+    )
+
+
+def sorcerun_run(
+    python_file,
+    config_file,
+    file_root=FILE_STORAGE_ROOT,
+    auth_path=AUTH_FILE,
+    mongo=False,
+    dont_profile=False,
+):
     # Load the adapter function from the provided Python file
-    adapter_module = load_python_module(python_file)
+    adapter_module = load_python_module(python_file, force_reload=True)
     if not hasattr(adapter_module, "adapter"):
         raise KeyError(
             f"Adapter file at {python_file} does not have an attribute named adapter"
@@ -112,7 +130,7 @@ def run(
         with open(config_file, "r") as file:
             config = yaml.safe_load(file)
     elif config_ext == ".py":
-        config_module = load_python_module(config_file)
+        config_module = load_python_module(config_file, force_reload=True)
         if not hasattr(config_module, "config"):
             raise KeyError(
                 f"Config file at {config_file} does not have an attribute named config"
@@ -124,7 +142,7 @@ def run(
         )
 
     # Run the Sacred experiment with the provided adapter function and config
-    run_sacred_experiment(
+    r = run_sacred_experiment(
         adapter_func,
         config,
         auth_path,
@@ -132,6 +150,7 @@ def run(
         file_storage_root=file_root,
         profile=not dont_profile,
     )
+    return r
 
 
 @sorcerun.command()

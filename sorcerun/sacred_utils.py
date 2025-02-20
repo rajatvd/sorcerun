@@ -16,12 +16,14 @@ import subprocess
 SETTINGS.CAPTURE_MODE = "sys"
 
 
-def load_python_module(python_file):
+def load_python_module(python_file, force_reload=False):
     file_dir = os.path.dirname(os.path.abspath(python_file))
     file_name = os.path.basename(python_file).replace(".py", "")
 
     sys.path.insert(0, file_dir)
     module = importlib.import_module(file_name)
+    if force_reload:
+        importlib.reload(module)
     sys.path.pop(0)
 
     return module
@@ -116,7 +118,8 @@ def run_sacred_experiment(
             result = adapter_func(_config, _run)
         return result
 
-    ex.run()
+    r = ex.run()
+    return r
 
 
 class DummyRun:
