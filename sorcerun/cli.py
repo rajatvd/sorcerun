@@ -194,7 +194,7 @@ def grid_run(
     post_process=False,
     mongo=False,
 ):
-    grid_run_function(
+    sorcerun_grid_run(
         python_file,
         grid_config_file,
         file_root,
@@ -204,7 +204,7 @@ def grid_run(
     )
 
 
-def grid_run_function(
+def sorcerun_grid_run(
     python_file,
     grid_config_file,
     file_root=FILE_STORAGE_ROOT,
