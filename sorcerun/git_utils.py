@@ -67,16 +67,25 @@ def freeze_notebook(
     filename,
     repo,
     commit_hash,
-    main_tree_hash,
+    **assignments,
 ):
-    # TODO: generalize to freeze any set of subtree hash assignment lines
+    """freeze_notebook.
+
+    :param filename: The name of the python file to freeze.
+    :param repo: The Git repository object.
+    :param commit_hash: The commit hash to use for the freeze.
+    :param assignments: A dictionary of variable assignments to replace in the file.
+        Assignments should be in the form of {name: value}.
+        The lines that start with `name = ` will be replaced with `name = "value"`.
+        The value is treated as a string.
+    """
     script_path = f"{repo.working_dir}/{filename}"
 
     base_filename = filename.split("/")[-1]
 
     commit = repo.commit(commit_hash)
     commit_time = commit.committed_datetime.strftime(TIME_FORMAT)
-    target_dir = f"{repo.working_dir}/{FILE_STORAGE_ROOT}/notebooks/{main_tree_hash}"
+    target_dir = f"{repo.working_dir}/{FILE_STORAGE_ROOT}/notebooks/{commit_hash}"
     os.makedirs(target_dir, exist_ok=True)
     target_path = f"{target_dir}/{commit_time}-{base_filename}"
 
@@ -86,28 +95,40 @@ def freeze_notebook(
 
     # Prepare the replacement lines
     commit_line = f'COMMIT_HASH = "{commit_hash}"\n'
-    tree_line = f'MAIN_TREE_HASH = "{main_tree_hash}"\n'
 
     # Find and replace the target lines
     replaced_commit = False
-    replaced_tree = False
+    replaced_assignments = {name: False for name in assignments.keys()}
     new_lines = []
     for line in lines:
         stripped = line.strip()
-        if stripped.startswith("COMMIT_HASH"):
+        if stripped.startswith("COMMIT_HASH = "):
             new_lines.append(commit_line)
             replaced_commit = True
-        elif stripped.startswith("MAIN_TREE_HASH"):
-            new_lines.append(tree_line)
-            replaced_tree = True
+        # check if the line starts with assignemnt
+        elif any(stripped.startswith(f"{name} = ") for name in assignments.keys()):
+            for name, value in assignments.items():
+                if stripped.startswith(f"{name} = "):
+                    new_lines.append(f'{name} = "{value}"\n')
+                    replaced_assignments[name] = True
+                    break
         else:
             new_lines.append(line)
 
-    # Check if both lines were found and replaced
+    # Check if all lines were found and replaced
     if not replaced_commit:
         raise RuntimeError("COMMIT_HASH assignment line not found")
-    if not replaced_tree:
-        raise RuntimeError("MAIN_TREE_HASH assignment line not found")
+    if not all(replaced_assignments.values()):
+        raise RuntimeError(
+            "One or more assignment lines not found: "
+            + ", ".join(
+                [
+                    name
+                    for name, replaced in replaced_assignments.items()
+                    if not replaced
+                ]
+            )
+        )
 
     # Write the modified content back to the file
     with open(target_path, "w") as f:
