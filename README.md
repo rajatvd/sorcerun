@@ -10,7 +10,7 @@ The function is called an **adapter**, and its input is assumed to be a python d
 
 Run `sorcerun run adapter.py config.py` to call the adapter with the input config as a sacred experiment.
 
-An example can be found [here](https://github.com/rajatvd/sorcerun/tree/main/sorcerun/main)
+An example can be found [here](https://github.com/rajatvd/sorcerun/tree/main/sorcerun/main).
 
 Sorcerun also offers a CLI to help setup and manage a MongoDB observer for sacred.
 
