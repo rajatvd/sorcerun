@@ -16,7 +16,7 @@ grid_id = (f"{time_str}--{commit_hash}--dirty={dirty}",)
 ns = [10, 20, 30]
 
 
-def make_config(n):
+def make_config(n, r):
     c = {
         "n": n,
         "commit_hash": commit_hash,
@@ -24,8 +24,10 @@ def make_config(n):
         "time_str": time_str,
         "dirty": dirty,
         "grid_id": grid_id,
+        "repeat": r,
     }
     return c
 
 
-configs = [make_config(n) for n in ns]
+repeats = 100
+configs = [make_config(n, r) for n in ns for r in range(repeats)]

@@ -2,6 +2,7 @@ import click
 import time
 from sklearn.model_selection import ParameterGrid
 import os
+from tqdm import tqdm
 import subprocess
 import json, yaml
 from contextlib import ExitStack
@@ -186,6 +187,12 @@ def sorcerun_run(
     is_flag=True,
     help="Use MongoObserver",
 )
+@click.option(
+    "--no_tqdm",
+    "-nt",
+    is_flag=True,
+    help="Disable tqdm progress bar",
+)
 def grid_run(
     python_file,
     grid_config_file,
@@ -193,6 +200,7 @@ def grid_run(
     auth_path,
     post_process=False,
     mongo=False,
+    no_tqdm=False,
 ):
     sorcerun_grid_run(
         python_file,
@@ -201,6 +209,7 @@ def grid_run(
         auth_path,
         post_process=post_process,
         mongo=mongo,
+        use_tqdm=not no_tqdm,
     )
 
 
@@ -211,6 +220,7 @@ def sorcerun_grid_run(
     auth_path=AUTH_FILE,
     post_process=False,
     mongo=False,
+    use_tqdm=True,
 ):
     # Load the adapter function from the provided Python file
     adapter_module = load_python_module(python_file)
@@ -251,7 +261,12 @@ def sorcerun_grid_run(
     print(f"Config grid contains {total_num_params} combinations")
 
     # Run the Sacred experiment with the provided adapter function and config
-    for i, conf in enumerate(configs):
+    t = (
+        tqdm(enumerate(configs), total=total_num_params)
+        if use_tqdm
+        else enumerate(configs)
+    )
+    for i, conf in t:
         print(
             "-" * 5
             + "GRID RUN INFO: "
