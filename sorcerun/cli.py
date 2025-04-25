@@ -277,8 +277,8 @@ def sorcerun_grid_run(
             print(f"Running pre_grid_hook")
             pre_grid_hook(conf)
 
-        print("Running experiment with config:")
-        print(json.dumps(conf, indent=2))
+        # print("Running experiment with config:")
+        # print(json.dumps(conf, indent=2))
 
         run_sacred_experiment(
             adapter_func,
