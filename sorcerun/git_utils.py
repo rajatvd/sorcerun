@@ -103,8 +103,7 @@ def branches_pointing_to(
         ref.name
         for ref in refs
         if ref.commit == target_commit
-        and not isinstance(ref, RemoteReference)
-        or include_remote
+        and (not isinstance(ref, RemoteReference) or include_remote)
     }
 
     return sorted(branch_names)
