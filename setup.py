@@ -6,7 +6,7 @@ os.chmod("scripts/flamegraph.pl", 0o755)
 
 setup(
     name="sorcerun",
-    version="0.5.13",
+    version="0.5.14",
     packages=find_packages(),
     install_requires=[
         "click",
