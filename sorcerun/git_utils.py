@@ -2,6 +2,7 @@ import time
 import os
 import inspect
 from git.repo.base import Repo
+from git import Repo, RemoteReference
 from .globals import TIME_FORMAT, FILE_STORAGE_ROOT
 
 
@@ -54,12 +55,59 @@ def get_tree_hash(repo, dir_path):
         return tree_obj.hexsha
     except KeyError:
         print(
-            f"Directory '{dir_path}' does not exist in the repository {repo.working_dir}"
+            f"Directory '{dir_path}' does not exist "
+            + f"in the repository {repo.working_dir}"
         )
         return None
     except Exception as e:
         print(f"An error occurred: {e}")
         return None
+
+
+# %%
+def branches_pointing_to(
+    repo: Repo,
+    commit_sha: str,
+    *,
+    include_remote: bool = True,
+) -> list[str]:
+    """
+    Return all branch names whose *tip* is exactly the given commit.
+
+    Parameters
+    ----------
+    repo : git.Repo
+        An initialized GitPython repository object.
+    commit_sha : str
+        Full or abbreviated SHA of the target commit.
+    include_remote : bool, optional (default=True)
+        If True, remote branches (e.g., 'origin/main') are included.
+
+    Returns
+    -------
+    list[str]
+        Sorted list of branch names pointing to the commit (may be empty).
+    """
+    try:
+        target_commit = repo.commit(commit_sha)
+    except Exception:  # BadName, ValueError, etc.
+        return []
+
+    refs = list(repo.heads)  # local branches
+    if include_remote:
+        for remote in repo.remotes:
+            refs.extend(remote.refs)  # RemoteReference objects
+
+    # Remove duplicates and keep only refs whose *tip* is the target commit
+    branch_names = {
+        ref.name
+        for ref in refs
+        if ref.commit == target_commit
+        and not isinstance(ref, RemoteReference)
+        or include_remote
+    }
+
+    return sorted(branch_names)
 
 
 # %%
@@ -83,11 +131,18 @@ def freeze_notebook(
 
     base_filename = filename.split("/")[-1]
 
+    branches = branches_pointing_to(repo, commit_hash)
+
+    nice_name = f"{branches[0]}_{commit_hash[:8]}"
+
     commit = repo.commit(commit_hash)
     commit_time = commit.committed_datetime.strftime(TIME_FORMAT)
-    target_dir = f"{repo.working_dir}/{FILE_STORAGE_ROOT}/notebooks/{commit_hash}"
+    target_dir = (
+        f"{repo.working_dir}/{FILE_STORAGE_ROOT}/notebooks/"
+        + f"{commit_time}_{nice_name}"
+    )
     os.makedirs(target_dir, exist_ok=True)
-    target_path = f"{target_dir}/{commit_time}-{base_filename}"
+    target_path = f"{target_dir}/{nice_name}_{base_filename}"
 
     # Read the current content of the script
     with open(script_path, "r") as f:
