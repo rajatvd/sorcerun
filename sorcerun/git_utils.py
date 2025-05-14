@@ -69,7 +69,7 @@ def branches_pointing_to(
     repo: Repo,
     commit_sha: str,
     *,
-    include_remote: bool = True,
+    include_remote: bool = False,
 ) -> list[str]:
     """
     Return all branch names whose *tip* is exactly the given commit.
