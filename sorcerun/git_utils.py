@@ -4,8 +4,10 @@ import inspect
 from git.repo.base import Repo
 from git import Repo, RemoteReference
 from .globals import TIME_FORMAT, FILE_STORAGE_ROOT
+import sys
 
 
+# %%
 def get_repo():
     try:
         repo = Repo(".", search_parent_directories=True)
@@ -36,6 +38,28 @@ def get_exp_info(short_length=8):
     time_str = get_time_str()
     exp_info = f"{time_str}-{short_hash}-dirty={is_dirty(repo)}"
     return exp_info
+
+
+# %%
+def inject_repo_into_sys_path():
+    """Inject the repository root into sys.path for module imports.
+
+    TODO: check how this works with git worktrees
+
+    Also returns the path to the repo root.
+    """
+    repo = get_repo()
+    if repo:
+        repo_root = repo.working_dir
+        if repo_root not in sys.path:
+            sys.path.insert(0, repo_root)
+            print(f"Injected {repo_root} into sys.path")
+        else:
+            print(f"{repo_root} is already in sys.path")
+    else:
+        print("No repository found to inject into sys.path")
+
+    return repo_root
 
 
 # %%
