@@ -5,6 +5,8 @@ import os
 from tqdm import tqdm
 import subprocess
 import json, yaml
+from richerator import richerator
+from datetime import datetime
 from contextlib import ExitStack
 from .mongodb_utils import mongodb_server, init_mongodb
 from .sacred_utils import load_python_module, run_sacred_experiment
@@ -23,8 +25,19 @@ from .globals import (
 )
 from .slurm_utils import Job, poll_jobs
 
+from contextlib import redirect_stdout, redirect_stderr
+import platform
+
+
+from itertools import chain
 from prettytable import PrettyTable
 import sys, ipdb, traceback
+
+from multiprocessing import Pool, cpu_count, Queue, Manager
+from concurrent.futures import ProcessPoolExecutor, as_completed
+
+from functools import partial
+# %%
 
 
 def info(type, value, tb):
@@ -193,6 +206,19 @@ def sorcerun_run(
     is_flag=True,
     help="Disable tqdm progress bar",
 )
+@click.option(
+    "--n-workers",
+    "-n",
+    default=1,
+    show_default=True,
+    help="Processes to use",
+)
+@click.option(
+    "--not_quiet",
+    "-nq",
+    is_flag=True,
+    help="Suppress output from worker processes",
+)
 def grid_run(
     python_file,
     grid_config_file,
@@ -201,6 +227,8 @@ def grid_run(
     post_process=False,
     mongo=False,
     no_tqdm=False,
+    n_workers: int = 1,  # <--- new argument (set to cpu_count() for “max”)
+    not_quiet: bool = False,  # <--- new argument to control output
 ):
     sorcerun_grid_run(
         python_file,
@@ -210,9 +238,67 @@ def grid_run(
         post_process=post_process,
         mongo=mongo,
         use_tqdm=not no_tqdm,
+        n_workers=n_workers,
+        quiet=not not_quiet,
     )
 
 
+# %%
+def _run_single_config(
+    idx_conf_tuple,
+    python_file,
+    auth_path,
+    file_root,
+    mongo,
+    pre_grid_hook,
+    post_grid_hook,
+    quiet=True,
+):
+    """
+    Helper executed in a worker process.
+    We reload the adapter module inside the subprocess so we only
+    have to pickle simple objects (ints / dicts / strings).
+    """
+    idx, conf = idx_conf_tuple
+
+    if quiet:
+        null_dev = "NUL" if platform.system() == "Windows" else "/dev/null"
+        devnull = open(null_dev, "w")
+        sys.stdout.flush()
+        sys.stderr.flush()
+        redir = (redirect_stdout(devnull), redirect_stderr(devnull))
+    else:
+        redir = (redirect_stdout(sys.stdout), redirect_stderr(sys.stderr))  # no-op!
+
+    # local import keeps the worker lightweight
+    with redir[0], redir[1]:
+        try:
+            from .sacred_utils import load_python_module, run_sacred_experiment
+
+            adapter_module = load_python_module(python_file, force_reload=True)
+            adapter_func = adapter_module.adapter
+
+            if pre_grid_hook is not None:
+                pre_grid_hook(conf)
+
+            run_sacred_experiment(
+                adapter_func,
+                conf,
+                auth_path,
+                use_mongo=mongo,
+                file_storage_root=file_root,
+            )
+
+            if post_grid_hook is not None:
+                post_grid_hook(conf)
+
+        except Exception:
+            raise  # still propagate so the future ends in error
+
+    return idx  # used only for progress-bar accounting
+
+
+# %%
 def sorcerun_grid_run(
     python_file,
     grid_config_file,
@@ -221,101 +307,125 @@ def sorcerun_grid_run(
     post_process=False,
     mongo=False,
     use_tqdm=True,
+    *,
+    n_workers: int = 1,  # <--- new argument (set to cpu_count() for “max”)
+    quiet: bool = True,  # <--- new argument to control output
 ):
-    # Load the adapter function from the provided Python file
-    adapter_module = load_python_module(python_file)
+    """
+    Run all configs in *grid_config_file*.
+    If *n_workers>1* we spread the work across that many processes.
+    """
+    # ------------------------------------------------------------------ setup
+    adapter_module = load_python_module(python_file, force_reload=True)
     if not hasattr(adapter_module, "adapter"):
-        raise KeyError(
-            f"Adapter file at {python_file} does not have an attribute named adapter"
-        )
-    adapter_func = adapter_module.adapter
+        raise KeyError(f"{python_file} needs an `adapter` callable")
     pre_grid_hook = getattr(adapter_module, "pre_grid_hook", None)
     post_grid_hook = getattr(adapter_module, "post_grid_hook", None)
 
-    # Check extension of grid config file and load it accordingly
+    # ----- load configs exactly as before -----------------------------------
     _, config_ext = os.path.splitext(grid_config_file)
-
     if config_ext == ".yaml":
-        with open(grid_config_file, "r") as file:
-            config = yaml.safe_load(file)
-        config = squish_dict(config)
-        for k, v in config.items():
-            if type(v) != list:
-                config[k] = [v]
-        param_grid = ParameterGrid([config])
-        configs = [unsquish_dict(param) for param in param_grid]
-
+        with open(grid_config_file, "r") as fh:
+            base_cfg = yaml.safe_load(fh)
+        flat = squish_dict(base_cfg)
+        for k, v in flat.items():
+            if not isinstance(v, list):
+                flat[k] = [v]
+        param_grid = ParameterGrid([flat])
+        configs = [unsquish_dict(p) for p in param_grid]
     elif config_ext == ".py":
-        config_module = load_python_module(grid_config_file)
-        if not hasattr(config_module, "configs"):
-            raise KeyError(
-                f"Config file at {grid_config_file} does not have an attribute named configs"
-            )
-        configs = config_module.configs
+        cfg_mod = load_python_module(grid_config_file, force_reload=True)
+        if not hasattr(cfg_mod, "configs"):
+            raise KeyError(f"{grid_config_file} needs a `configs` list")
+        configs = cfg_mod.configs
     else:
-        raise ValueError(
-            f"Config file at {grid_config_file} is not a valid YAML or python file"
+        raise ValueError("grid config must be *.yaml or *.py*")
+
+    total = len(configs)
+    click.echo(f"Config grid contains {total} combinations")
+
+    # ---------------------------------------------------------------- worker
+    if n_workers > 1:
+        # canonical worker count
+        n_workers = min(max(n_workers, 1), cpu_count())
+        # ---------- submit every job right away, remember when it started
+
+        total = len(configs)
+
+        with ProcessPoolExecutor(max_workers=n_workers) as pool:
+            runner = partial(
+                _run_single_config,
+                python_file=python_file,
+                auth_path=auth_path,
+                file_root=file_root,
+                mongo=mongo,
+                pre_grid_hook=pre_grid_hook,
+                post_grid_hook=post_grid_hook,
+                quiet=quiet,  # <--- pass the quiet argument
+            )
+            futures = []
+            for i, conf in tqdm(enumerate(configs)):
+                futures.append(
+                    pool.submit(runner, (i, conf))
+                )  # submit each config as a separate job
+
+            def futures_poller():
+                while True:
+                    running = [idx for idx, fut in enumerate(futures) if fut.running()]
+                    done = [idx for idx, fut in enumerate(futures) if fut.done()]
+                    time.sleep(1)  # avoid busy-waiting
+                    yield (
+                        (running),
+                        (done),
+                    )
+
+            print(f"Submitted {len(futures)} jobs in parallel with {n_workers} workers")
+            time.sleep(1)  # give some time for the first jobs to start
+
+            t = chain([None], as_completed(futures))
+            for just_done in richerator(
+                t,
+                description="Running grid",
+                refresh_per_second=2,
+                # total=len(configs) + 1,
+            ):
+                if just_done is not None:
+                    idx = just_done.result()
+                    print(f"Just finished run {idx + 1}")
+
+                running = [idx for idx, fut in enumerate(futures) if fut.running()]
+                print(f"Running {len(running)} jobs:")
+                print("\n".join(f"{i + 1}" for i in running))
+
+    # ---------------------------------------------------------------- serial
+    else:
+        iterable = (
+            tqdm(enumerate(configs), total=total) if use_tqdm else enumerate(configs)
         )
+        for idx, conf in iterable:
+            click.echo(f"----- GRID RUN {idx + 1}/{total} -----")
+            if pre_grid_hook is not None:
+                pre_grid_hook(conf)
 
-    total_num_params = len(configs)
-    print(f"Config grid contains {total_num_params} combinations")
+            run_sacred_experiment(
+                adapter_module.adapter,
+                conf,
+                auth_path,
+                use_mongo=mongo,
+                file_storage_root=file_root,
+            )
 
-    # Run the Sacred experiment with the provided adapter function and config
-    t = (
-        tqdm(enumerate(configs), total=total_num_params)
-        if use_tqdm
-        else enumerate(configs)
-    )
-    for i, conf in t:
-        print(
-            "-" * 5
-            + "GRID RUN INFO: "
-            + f"Starting run {i+1}/{total_num_params}"
-            + "-" * 5
-        )
-        if pre_grid_hook is not None:
-            print(f"Running pre_grid_hook")
-            pre_grid_hook(conf)
+            if post_grid_hook is not None:
+                post_grid_hook(conf)
 
-        # print("Running experiment with config:")
-        # print(json.dumps(conf, indent=2))
-
-        run_sacred_experiment(
-            adapter_func,
-            conf,
-            auth_path,
-            use_mongo=mongo,
-            file_storage_root=file_root,
-        )
-
-        if post_grid_hook is not None:
-            print(f"Running post_grid_hook")
-            post_grid_hook(conf)
-
-        print(
-            "-" * 5
-            + "GRID RUN INFO: "
-            + f"Completed run {i+1}/{total_num_params}"
-            + "-" * 5
-        )
-
+    # ---------------------------------------------------------------- finish
     if post_process:
-        # Post process grid and save xarray to netcdf
-        # check if each config in configs has the same "grid_id" and assign it to gid
-        gid = configs[0].get("grid_id", None)
-        same_gid = False
-        if gid is not None:
-            same_gid = all(conf.get("grid_id", None) == gid for conf in configs)
-
-        if same_gid:
-            print(f"All configs have the same grid_id: {gid}")
-            print(f"Processing and saving grid to csv")
+        gid = configs[0].get("grid_id")
+        if gid and all(c.get("grid_id") == gid for c in configs):
+            click.echo("Post-processing full grid to CSV")
             process_and_save_grid_to_csv(gid, file_root=file_root)
         else:
-            print(
-                f"Configs do not have the same grid_id."
-                + " Skipping processing and saving grid to csv"
-            )
+            click.echo("Skipping post-process (grid_id differs between configs)")
 
 
 # %%
@@ -432,7 +542,7 @@ def grid_slurm(
         print(
             "-" * 5
             + "GRID RUN INFO: "
-            + f"Submitting run {i+1}/{total_num_params}"
+            + f"Submitting run {i + 1}/{total_num_params}"
             + "-" * 5
         )
 
@@ -479,7 +589,7 @@ def grid_slurm(
         print(
             "-" * 5
             + "GRID RUN INFO: "
-            + f"Finished submitting run {i+1}/{total_num_params}"
+            + f"Finished submitting run {i + 1}/{total_num_params}"
             + "-" * 5
         )
 
