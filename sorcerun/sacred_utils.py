@@ -49,7 +49,7 @@ def run_sacred_experiment(
             file_storage_root = os.path.join(repo.working_dir, file_storage_root)
 
     experiment_name = getattr(adapter_func, "experiment_name", "sorcerun_experiment")
-    ex = Experiment(experiment_name)
+    ex = Experiment(experiment_name, save_git_info=False)
     ex.captured_out_filter = apply_backspaces_and_linefeeds
 
     # Read auth_data from auth_path
